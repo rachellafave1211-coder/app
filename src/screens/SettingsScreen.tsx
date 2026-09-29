@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { sortedPaychecks } from '../lib/budget'
+import { balances, sortedPaychecks } from '../lib/budget'
 import { ordinal } from '../lib/dates'
 import { uid } from '../lib/format'
 import { rowsFromCsv, sheetsCsvUrl, type ImportRow } from '../lib/importer'
-import { householdLink, templateLink, themeLink } from '../lib/links'
+import { householdLink, templateLink } from '../lib/links'
 import { emptyState, sampleState } from '../lib/seed'
 import { copy, shareOrCopy } from '../lib/share'
-import { getState, replaceState, update, useStore } from '../lib/store'
+import { getState, replaceState, setBalance, update, useStore } from '../lib/store'
 import { PRESETS } from '../lib/theme'
 import type { Bill, BillType, ThemeMode } from '../lib/types'
 import { IconBank, IconCheck, IconLink, IconPlus, IconTrash, IconUpload, IconUsers } from '../components/icons'
@@ -23,6 +23,9 @@ export function SettingsScreen() {
       </header>
       <div className="space-y-3">
         <ThemeSection />
+        <Section title="Account balances" subtitle="Checking and savings">
+          <AccountsEditor />
+        </Section>
         <Section title="Paychecks" subtitle={`${state.paychecks.length} per month`}>
           <PaychecksEditor />
         </Section>
@@ -146,17 +149,29 @@ function ThemeSection() {
           ]}
         />
       </div>
-      <Button
-        variant="soft"
-        className="mt-4 w-full"
-        onClick={async () => {
-          const r = await shareOrCopy({ title: 'My Payday theme', text: 'Try my Payday theme 🎨', url: themeLink(theme) })
-          if (r === 'copied') toast('Theme link copied')
-        }}
-      >
-        <IconLink size={18} /> Share this theme
-      </Button>
     </section>
+  )
+}
+
+function AccountsEditor() {
+  const state = useStore()
+  const b = balances(state)
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <span className="text-sm font-semibold">Checking</span>
+          <NumField label="Checking balance" prefix="$" value={b.checking} min={-1e7} onCommit={(n) => setBalance('checking', n)} />
+        </div>
+        <div className="space-y-1">
+          <span className="text-sm font-semibold">Savings</span>
+          <NumField label="Savings balance" prefix="$" value={b.savings} min={-1e7} onCommit={(n) => setBalance('savings', n)} />
+        </div>
+      </div>
+      <p className="text-xs text-muted">
+        Enter what’s in each account now. Checking goes up each payday and down when you log an expense or check off a bill. Checking off a savings item moves it from checking to savings.
+      </p>
+    </div>
   )
 }
 
@@ -169,7 +184,7 @@ function PaychecksEditor() {
         <div key={p.id} className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-2">
           <NumField label="Pay day of month" value={p.day} min={1} max={31} onCommit={(day) => set(p.id, { day: Math.round(day) })} />
           <NumField label="Paycheck amount" prefix="$" value={p.amount} onCommit={(amount) => set(p.id, { amount })} />
-          <DeleteBtn label={`Remove paycheck on the ${ordinal(p.day)}`} onClick={() => update((s) => ({ ...s, paychecks: s.paychecks.filter((x) => x.id !== p.id), bills: s.bills.map((b) => (b.pinnedPaycheckId === p.id ? { ...b, pinnedPaycheckId: undefined } : b)) }))} />
+          <DeleteBtn label={`Remove paycheck on the ${ordinal(p.day)}`} onClick={() => update((s) => ({ ...s, paychecks: s.paychecks.filter((x) => x.id !== p.id) }))} />
         </div>
       ))}
       <p className="text-xs text-muted">Day of month · amount. Days past a month’s end land on its last day.</p>
@@ -207,7 +222,7 @@ function CategoriesEditor() {
 const TYPES: BillType[] = ['bill', 'subscription', 'savings', 'debt']
 
 function BillsEditor() {
-  const { bills, paychecks, household } = useStore()
+  const { bills, household } = useStore()
   const [openId, setOpenId] = useState<string | null>(null)
   const set = (id: string, patch: Partial<Bill>) => update((s) => ({ ...s, bills: s.bills.map((b) => (b.id === id ? { ...b, ...patch } : b)) }))
   const sorted = [...bills].sort((a, b) => a.day - b.day || a.name.localeCompare(b.name))
@@ -231,23 +246,13 @@ function BillsEditor() {
                     <NumField label="Due day of month" value={b.day} min={1} max={31} onCommit={(day) => set(b.id, { day: Math.round(day) })} />
                     <NumField label="Bill amount" prefix="$" value={b.amount} onCommit={(amount) => set(b.id, { amount })} />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <select className="field" value={b.type} onChange={(e) => set(b.id, { type: e.target.value as BillType })} aria-label="Bill type">
-                      {TYPES.map((t) => (
-                        <option key={t} value={t}>
-                          {t[0].toUpperCase() + t.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                    <select className="field" value={b.pinnedPaycheckId ?? ''} onChange={(e) => set(b.id, { pinnedPaycheckId: e.target.value || undefined })} aria-label="Pay from paycheck">
-                      <option value="">Auto paycheck</option>
-                      {sortedPaychecks(paychecks).map((p) => (
-                        <option key={p.id} value={p.id}>
-                          Pin to {ordinal(p.day)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <select className="field" value={b.type} onChange={(e) => set(b.id, { type: e.target.value as BillType })} aria-label="Bill type">
+                    {TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t[0].toUpperCase() + t.slice(1)}
+                      </option>
+                    ))}
+                  </select>
                   {household.members.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                       <span className="text-sm text-muted">Split with</span>

@@ -1,11 +1,9 @@
 import { uid } from './format'
-import { isValidHex } from './theme'
-import type { AppState, Bill, BillType, Category, Household, Paycheck, Theme } from './types'
+import type { AppState, Bill, BillType, Category, Household, Paycheck } from './types'
 
 /** Shareable links carry their payload in the URL hash, so nothing leaves the device until shared. */
 export type LinkPayload =
-  | { kind: 'theme'; theme: Theme }
-  | { kind: 'template'; name: string; paychecks: Omit<Paycheck, 'id'>[]; categories: Omit<Category, 'id'>[]; bills: Omit<Bill, 'id' | 'pinnedPaycheckId' | 'splitWith'>[] }
+  | { kind: 'template'; name: string; paychecks: Omit<Paycheck, 'id'>[]; categories: Omit<Category, 'id'>[]; bills: Omit<Bill, 'id' | 'splitWith'>[] }
   | { kind: 'household'; household: Household; from: string; splits: { name: string; day: number; amount: number }[] }
 
 function encode(obj: unknown): string {
@@ -22,10 +20,6 @@ function decode(s: string): unknown {
 
 export function makeLink(payload: LinkPayload): string {
   return `${location.origin}${location.pathname}#${payload.kind}=${encode(payload)}`
-}
-
-export function themeLink(theme: Theme): string {
-  return makeLink({ kind: 'theme', theme })
 }
 
 export function templateLink(state: AppState, includeAmounts: boolean): string {
@@ -55,17 +49,10 @@ const arr = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.sli
 
 /** Read and validate a payload from the current URL hash. Untrusted input: every field is sanitized. */
 export function readLink(hash: string): LinkPayload | null {
-  const m = hash.match(/^#(theme|template|household)=([A-Za-z0-9_-]+)$/)
+  const m = hash.match(/^#(template|household)=([A-Za-z0-9_-]+)$/)
   if (!m) return null
   try {
     const raw = decode(m[2]) as Record<string, unknown>
-    if (m[1] === 'theme') {
-      const t = (raw.theme ?? {}) as Record<string, unknown>
-      const accent = str(t.accent, 7)
-      const mode = t.mode === 'light' || t.mode === 'dark' ? t.mode : 'auto'
-      if (!isValidHex(accent)) return null
-      return { kind: 'theme', theme: { accent, mode } }
-    }
     if (m[1] === 'template') {
       return {
         kind: 'template',

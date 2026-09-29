@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { billsDueBetween, occurrenceKey, planMonth } from './budget'
+import { balances, billsDueBetween, occurrenceKey, planMonth } from './budget'
 import { sampleState } from './seed'
 import type { AppState } from './types'
 
@@ -42,13 +42,6 @@ describe('planMonth', () => {
     expect(names(s, '2026-11')[0]).toContain('Savings')
   })
 
-  it('honors a pinned paycheck', () => {
-    const s = sampleState()
-    s.bills = s.bills.map((b) => (b.name === 'Rent' ? { ...b, pinnedPaycheckId: 'p3' } : b))
-    expect(names(s, '2026-10')[2]).toContain('Rent')
-    expect(names(s, '2026-10')[0]).not.toContain('Rent')
-  })
-
   it('clamps day 31 to short months and tracks spending per window', () => {
     const s = sampleState()
     s.paychecks = [{ id: 'x', day: 31, amount: 500 }]
@@ -73,5 +66,40 @@ describe('billsDueBetween', () => {
     const due = billsDueBetween(sampleState(), '2026-09-27', '2026-10-03')
     expect(due.map((b) => b.bill.name)).toEqual(['PG&E', 'Savings', 'Rent', 'Gym'])
     expect(due.find((b) => b.bill.name === 'Rent')?.key).toBe('b-rent@2026-10')
+  })
+})
+
+describe('balances', () => {
+  const at = (d: string, h = 12) => new Date(`${d}T${String(h).padStart(2, '0')}:00:00`).getTime()
+  const setup = (): AppState => ({
+    ...sampleState(),
+    accounts: { checking: { start: 1000, since: at('2026-10-02') }, savings: { start: 500, since: at('2026-10-02') } },
+  })
+
+  it('starts at the entered amounts and totals them', () => {
+    expect(balances(setup(), at('2026-10-02', 13))).toEqual({ checking: 1000, savings: 500, total: 1500 })
+  })
+
+  it('adds paydays after the day the balance was set', () => {
+    // Oct 10 pays; Oct 1 (before) and Oct 20 (future) do not.
+    expect(balances(setup(), at('2026-10-12')).checking).toBe(2100)
+  })
+
+  it('subtracts expenses and paid bills logged after the balance was set', () => {
+    const s = setup()
+    s.expenses = [
+      { id: 'a', date: '2026-10-03', note: '', categoryId: 'c-gas', amount: 40, addedAt: at('2026-10-03') },
+      { id: 'b', date: '2026-10-02', note: '', categoryId: 'c-gas', amount: 99, addedAt: at('2026-10-02', 9) },
+      { id: 'c', date: '2026-09-20', note: '', categoryId: 'c-gas', amount: 77, addedAt: at('2026-10-03') },
+    ]
+    s.paid = { 'b-gym@2026-10': at('2026-10-03'), 'b-rent@2026-10': at('2026-10-01'), 'b-wifi@2026-09': true }
+    // Only the Oct 3 expense and the Gym payment count.
+    expect(balances(s, at('2026-10-04')).checking).toBe(1000 - 40 - 118)
+  })
+
+  it('moves paid savings items from checking to savings', () => {
+    const s = setup()
+    s.paid = { 'b-savings@2026-10': at('2026-10-03') }
+    expect(balances(s, at('2026-10-04'))).toEqual({ checking: 800, savings: 700, total: 1500 })
   })
 })

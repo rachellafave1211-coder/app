@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react'
 import { billsDueBetween, categoryById, payInstances } from '../lib/budget'
 import { addMonths, dateInMonth, daysInMonth, monthShort, parseMonth, thisMonth, today, weekdayDate } from '../lib/dates'
 import { money } from '../lib/format'
-import { toggleFlag, update, useStore } from '../lib/store'
+import { togglePaid, update, useStore } from '../lib/store'
 import type { DateStr } from '../lib/types'
 import { CheckCircle, MonthSwitcher } from '../components/ui'
 
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export function CalendarScreen() {
   const state = useStore()
@@ -21,11 +21,12 @@ export function CalendarScreen() {
   const end = dateInMonth(month, 31)
 
   const marks = useMemo(() => {
-    const pays = new Set(payInstances(state.paychecks, month, month).map((p) => p.date))
-    const bills = billsDueBetween(state, start, end)
-    const billDays = new Set(bills.map((b) => b.due))
-    const remDays = new Set(state.reminders.filter((r) => !r.done).map((r) => r.date))
-    return { pays, billDays, remDays, bills }
+    const pays = new Map(payInstances(state.paychecks, month, month).map((p) => [p.date, p.paycheck.amount]))
+    const bills = new Map<DateStr, string[]>()
+    for (const b of billsDueBetween(state, start, end)) bills.set(b.due, [...(bills.get(b.due) ?? []), b.bill.name])
+    const rems = new Map<DateStr, string[]>()
+    for (const r of state.reminders) if (!r.done) rems.set(r.date, [...(rems.get(r.date) ?? []), r.text])
+    return { pays, bills, rems }
   }, [state, month, start, end])
 
   const selPay = payInstances(state.paychecks, selected.slice(0, 7), selected.slice(0, 7)).filter((p) => p.date === selected)
@@ -33,10 +34,11 @@ export function CalendarScreen() {
   const selRems = state.reminders.filter((r) => r.date === selected)
   const selExp = state.expenses.filter((e) => e.date === selected)
   const nothing = !selPay.length && !selBills.length && !selRems.length && !selExp.length
+  const rows = Math.ceil((first + count) / 7)
 
   return (
     <div>
-      <header className="flex items-center justify-between px-1 pb-3">
+      <header className="flex h-13 items-center justify-between px-1">
         <h1 className="font-serif text-[28px] font-semibold tracking-tight">Calendar</h1>
         <MonthSwitcher
           label={monthShort(month)}
@@ -49,15 +51,17 @@ export function CalendarScreen() {
         />
       </header>
 
-      <section className="card p-4">
+      <div className="flex flex-col gap-5 lg:flex-row">
+      <section className="cal-fill card flex min-w-0 flex-col p-2 sm:p-4 lg:flex-1">
         <div className="grid grid-cols-7 text-center text-xs font-semibold text-muted" aria-hidden="true">
           {WEEKDAYS.map((d, i) => (
             <div key={i} className="py-1">
-              {d}
+              <span className="sm:hidden">{d[0]}</span>
+              <span className="hidden sm:inline">{d}</span>
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-y-1" role="grid" aria-label={monthShort(month)}>
+        <div className="grid min-h-0 flex-1 grid-cols-7 gap-1" style={{ gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }} role="grid" aria-label={monthShort(month)}>
           {Array.from({ length: first }, (_, i) => (
             <div key={`b${i}`} />
           ))}
@@ -65,10 +69,10 @@ export function CalendarScreen() {
             const date = dateInMonth(month, i + 1)
             const isSel = date === selected
             const isToday = date === t
-            const pay = marks.pays.has(date)
-            const bill = marks.billDays.has(date)
-            const rem = marks.remDays.has(date)
-            const desc = [pay && 'payday', bill && 'bills due', rem && 'reminder'].filter(Boolean).join(', ')
+            const pay = marks.pays.get(date)
+            const bills = marks.bills.get(date) ?? []
+            const rems = marks.rems.get(date) ?? []
+            const desc = [pay !== undefined && 'payday', bills.length && 'bills due', rems.length && 'reminder'].filter(Boolean).join(', ')
             return (
               <button
                 key={date}
@@ -76,28 +80,37 @@ export function CalendarScreen() {
                 aria-selected={isSel}
                 aria-label={`${weekdayDate(date)}${desc ? `: ${desc}` : ''}`}
                 onClick={() => setSelected(date)}
-                className={`press mx-auto flex aspect-square w-full max-w-12 flex-col items-center justify-center rounded-2xl ${
-                  isSel ? 'bg-accent text-on-accent' : isToday ? 'bg-accent-soft text-accent-text' : 'hover:bg-sunken'
+                className={`press flex min-h-0 min-w-0 flex-col items-center overflow-hidden rounded-xl p-1 md:items-stretch md:rounded-2xl md:p-2 ${
+                  isSel ? 'bg-accent text-on-accent' : isToday ? 'bg-accent-soft text-accent-text' : 'bg-sunken/50 hover:bg-sunken'
                 }`}
               >
-                <span className={`text-[15px] ${isSel || isToday ? 'font-bold' : 'font-medium'}`}>{i + 1}</span>
-                <span className="mt-0.5 flex h-1.5 gap-0.5">
-                  {pay && <Dot className={isSel ? 'bg-on-accent' : 'bg-accent'} />}
-                  {bill && <Dot className={isSel ? 'bg-on-accent/80' : 'bg-warn'} />}
-                  {rem && <Dot className={isSel ? 'bg-on-accent/60' : 'bg-info'} />}
+                <span className={`text-[15px] leading-6 md:text-left ${isSel || isToday ? 'font-bold' : 'font-medium'}`}>{i + 1}</span>
+                <span className="mt-0.5 flex h-1.5 gap-0.5 md:hidden">
+                  {pay !== undefined && <Dot className={isSel ? 'bg-on-accent' : 'bg-accent'} />}
+                  {bills.length > 0 && <Dot className={isSel ? 'bg-on-accent/80' : 'bg-warn'} />}
+                  {rems.length > 0 && <Dot className={isSel ? 'bg-on-accent/60' : 'bg-info'} />}
+                </span>
+                <span className="mt-1 hidden min-h-0 flex-col gap-0.5 overflow-hidden text-left text-[11px] leading-4 font-medium md:flex">
+                  {pay !== undefined && <Chip dot={isSel ? 'bg-on-accent' : 'bg-accent'} text={`Payday ${money(pay)}`} />}
+                  {bills.map((n, j) => (
+                    <Chip key={`b${j}`} dot={isSel ? 'bg-on-accent/80' : 'bg-warn'} text={n} />
+                  ))}
+                  {rems.map((n, j) => (
+                    <Chip key={`r${j}`} dot={isSel ? 'bg-on-accent/60' : 'bg-info'} text={n} />
+                  ))}
                 </span>
               </button>
             )
           })}
         </div>
-        <div className="mt-3 flex justify-center gap-4 text-xs text-muted">
+        <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted">
           <Legend className="bg-accent" label="Payday" />
           <Legend className="bg-warn" label="Bill due" />
           <Legend className="bg-info" label="Reminder" />
         </div>
       </section>
 
-      <section className="mt-5">
+      <section className="lg:cal-fill min-w-0 lg:w-80 lg:shrink-0 lg:overflow-y-auto xl:w-96">
         <h2 className="px-1 font-serif text-xl font-semibold">{weekdayDate(selected)}</h2>
         <div className="mt-3 space-y-3">
           {nothing && <p className="card p-5 text-center text-sm text-muted">Nothing on this day.</p>}
@@ -114,7 +127,7 @@ export function CalendarScreen() {
             <Group title="Bills due">
               {selBills.map((b) => (
                 <Row key={b.key}>
-                  <CheckCircle checked={b.paid} label={`Mark ${b.bill.name} paid`} onToggle={() => update((s) => ({ ...s, paid: toggleFlag(s.paid, b.key) }))} />
+                  <CheckCircle checked={b.paid} label={`Mark ${b.bill.name} paid`} onToggle={() => update((s) => ({ ...s, paid: togglePaid(s.paid, b.key) }))} />
                   <span className={`flex-1 font-medium ${b.paid ? 'text-muted line-through' : ''}`}>{b.bill.name}</span>
                   <span className="num font-semibold">{money(b.bill.amount)}</span>
                 </Row>
@@ -153,9 +166,17 @@ export function CalendarScreen() {
           )}
         </div>
       </section>
+      </div>
     </div>
   )
 }
+
+const Chip = ({ dot, text }: { dot: string; text: string }) => (
+  <span className="flex min-w-0 items-center gap-1">
+    <span className={`size-1.5 shrink-0 rounded-full ${dot}`} />
+    <span className="truncate">{text}</span>
+  </span>
+)
 
 const Dot = ({ className }: { className: string }) => <span className={`size-1.5 rounded-full ${className}`} />
 

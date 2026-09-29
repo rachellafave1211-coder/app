@@ -153,6 +153,31 @@ export function Button({ children, variant = 'primary', className = '', ...rest 
   )
 }
 
+/** Large money input with a fixed $ prefix; digits always start after the $. */
+export function AmountField({ value, onChange, label, inputRef, allowNegative }: { value: string; onChange: (v: string) => void; label: string; inputRef?: React.Ref<HTMLInputElement>; allowNegative?: boolean }) {
+  const clean = (v: string) => {
+    const neg = allowNegative && v.trim().startsWith('-')
+    const digits = v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
+    return (neg ? '-' : '') + digits
+  }
+  return (
+    <div className="relative rounded-3xl bg-sunken">
+      <span className="num pointer-events-none absolute top-1/2 left-6 -translate-y-1/2 text-4xl text-muted" aria-hidden="true">
+        $
+      </span>
+      <input
+        ref={inputRef}
+        inputMode="decimal"
+        placeholder="0"
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(clean(e.target.value))}
+        className="num w-full min-w-0 rounded-3xl border-2 border-transparent bg-transparent py-6 pr-6 pl-14 text-6xl font-semibold outline-none placeholder:text-muted/50 focus:border-accent"
+      />
+    </div>
+  )
+}
+
 // A tiny global toast.
 let pushToast: (msg: string) => void = () => {}
 export const toast = (msg: string) => pushToast(msg)

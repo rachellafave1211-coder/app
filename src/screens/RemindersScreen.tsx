@@ -3,7 +3,7 @@ import { billsDueBetween } from '../lib/budget'
 import { addDays, daysBetween, shortDate, today } from '../lib/dates'
 import { money, uid } from '../lib/format'
 import { enableNotifications, notificationsSupported } from '../lib/notify'
-import { toggleFlag, update, useStore } from '../lib/store'
+import { togglePaid, update, useStore } from '../lib/store'
 import { IconBell, IconPlus, IconTrash } from '../components/icons'
 import { Button, CheckCircle, Pill, SectionTitle, toast } from '../components/ui'
 
@@ -48,7 +48,7 @@ export function RemindersScreen() {
         {upcoming.length === 0 && <p className="py-5 text-center text-sm text-muted">No bills due this week. Enjoy it. ✨</p>}
         {upcoming.map((b) => (
           <div key={b.key} className="flex items-center gap-3 py-3">
-            <CheckCircle checked={b.paid} label={`Mark ${b.bill.name} paid`} onToggle={() => update((s) => ({ ...s, paid: toggleFlag(s.paid, b.key) }))} />
+            <CheckCircle checked={b.paid} label={`Mark ${b.bill.name} paid`} onToggle={() => update((s) => ({ ...s, paid: togglePaid(s.paid, b.key) }))} />
             <div className={`min-w-0 flex-1 ${b.paid ? 'opacity-55' : ''}`}>
               <p className={`font-medium ${b.paid ? 'line-through' : ''}`}>{b.bill.name}</p>
               <p className="text-xs text-muted">{shortDate(b.due)}</p>

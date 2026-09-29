@@ -27,4 +27,3 @@ export const IconSparkle = (p: P) => base(p, <path d="M12 3.5 13.8 10l6.7 2-6.7 
 export const IconBank = (p: P) => base(p, <><path d="m3.5 9 8.5-5 8.5 5M5 9v8M9.5 9v8M14.5 9v8M19 9v8M3.5 20h17" /></>)
 export const IconUpload = (p: P) => base(p, <><path d="M12 16V4M7.5 8.5 12 4l4.5 4.5" /><path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16" /></>)
 export const IconUsers = (p: P) => base(p, <><circle cx="9" cy="8" r="3.5" /><path d="M3 19.5a6 6 0 0 1 12 0" /><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.3a6 6 0 0 1 3 5.2" /></>)
-export const IconPin = (p: P) => base(p, <><path d="M9 4h6l-1 5 3 3H7l3-3Z" /><path d="M12 12v8" /></>)

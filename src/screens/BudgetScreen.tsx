@@ -2,12 +2,13 @@ import { useMemo, useState } from 'react'
 import { categoryById, planMonth, type PaycheckPlan } from '../lib/budget'
 import { addMonths, monthShort, shortDate, thisMonth, weekdayDate } from '../lib/dates'
 import { money, moneyWhole, pct } from '../lib/format'
-import { toggleFlag, update, useStore } from '../lib/store'
+import { togglePaid, update, useStore } from '../lib/store'
 import type { AppState, BillType } from '../lib/types'
-import { IconNext, IconPin, IconShare, IconTrash } from '../components/icons'
+import { IconNext, IconShare, IconTrash } from '../components/icons'
 import { Bar, Button, CheckCircle, MonthSwitcher, Pill, Ring, SectionTitle } from '../components/ui'
 import { WrappedSheet } from './WrappedSheet'
 import { SplitsCard } from './SplitsCard'
+import { BalancesCard } from './BalancesCard'
 
 export const TYPE_LABEL: Record<BillType, string> = { bill: 'Bill', subscription: 'Sub', savings: 'Savings', debt: 'Debt' }
 
@@ -28,6 +29,10 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: () => void }) {
         <h1 className="font-serif text-[28px] font-semibold tracking-tight">Payday</h1>
         <MonthSwitcher label={monthShort(month)} onPrev={() => setMonth(addMonths(month, -1))} onNext={() => setMonth(addMonths(month, 1))} onToday={() => setMonth(thisMonth())} />
       </header>
+
+      <div className="mb-4">
+        <BalancesCard />
+      </div>
 
       <section className="anim-pop relative overflow-hidden rounded-[28px] bg-accent p-6 text-on-accent shadow-card">
         <div className="pointer-events-none absolute -top-16 -right-16 size-56 rounded-full border-[28px] border-on-accent/10" />
@@ -192,12 +197,11 @@ function PaycheckCard({ plan, state, index }: { plan: PaycheckPlan; state: AppSt
               <CheckCircle
                 checked={b.paid}
                 label={`Mark ${b.bill.name} ${b.paid ? 'unpaid' : 'paid'}`}
-                onToggle={() => update((s) => ({ ...s, paid: toggleFlag(s.paid, b.key) }))}
+                onToggle={() => update((s) => ({ ...s, paid: togglePaid(s.paid, b.key) }))}
               />
               <div className={`min-w-0 flex-1 ${b.paid ? 'opacity-55' : ''}`}>
                 <p className={`truncate font-medium ${b.paid ? 'line-through decoration-muted' : ''}`}>
                   {b.bill.name}
-                  {b.bill.pinnedPaycheckId && <IconPin size={13} className="ml-1 inline text-muted" aria-label="pinned" />}
                 </p>
                 <p className="text-xs text-muted">
                   due {shortDate(b.due)} · {TYPE_LABEL[b.bill.type]}

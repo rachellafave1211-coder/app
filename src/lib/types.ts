@@ -18,8 +18,6 @@ export interface Bill {
   day: number
   amount: number
   type: BillType
-  /** Always pay this bill from this paycheck (in the bill's due month). */
-  pinnedPaycheckId?: Id
   /** Household members who split this bill equally with you. */
   splitWith?: Id[]
 }
@@ -39,6 +37,8 @@ export interface Expense {
   categoryId: Id | ''
   amount: number
   source?: 'manual' | 'import' | 'bank'
+  /** When it was logged (ms). Balances only count expenses logged after the balance was set. */
+  addedAt?: number
 }
 
 export interface Reminder {
@@ -65,6 +65,12 @@ export interface Household {
   members: Member[]
 }
 
+/** A balance you entered, and when (ms). Later activity moves it from there. */
+export interface Balance {
+  start: number
+  since: number
+}
+
 export interface AppState {
   version: 1
   paychecks: Paycheck[]
@@ -73,13 +79,14 @@ export interface AppState {
   expenses: Expense[]
   reminders: Reminder[]
   theme: Theme
-  /** Paid bill occurrences, keyed by `billId@YYYY-MM` (the due month). */
-  paid: Record<string, true>
+  /** Paid bill occurrences, keyed by `billId@YYYY-MM` (the due month), with when they were paid (ms). */
+  paid: Record<string, number | true>
   /** Bill occurrences moved N paychecks later, keyed like `paid`. */
   shifts: Record<string, number>
   household: Household
   /** Split repayments received, keyed by `billId@YYYY-MM@memberId`. */
   settled: Record<string, true>
+  accounts: { checking: Balance; savings: Balance }
   notificationsOn: boolean
   /** Notifications already sent, so each fires once. */
   notified: Record<string, true>
