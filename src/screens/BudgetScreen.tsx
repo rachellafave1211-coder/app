@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react'
-import { assignBill, assignExpense, categoryById, paycheckLabel, payKey, placeExpense, planMonth, type MonthPlan, type PaycheckPlan, type PayInstance, type Placement } from '../lib/budget'
+import { assignBill, assignExpense, categoryById, paycheckLabel, payKey, placeExpense, planMonth, type PaycheckPlan, type PayInstance, type Placement } from '../lib/budget'
+import { billTypeLabel } from '../lib/billTypes'
 import { addMonths, monthShort, shortDate, thisMonth, weekdayDate } from '../lib/dates'
 import { money, moneyWhole, pct } from '../lib/format'
 import { togglePaid, update, useStore } from '../lib/store'
-import type { AppState, BillType } from '../lib/types'
+import type { AppState } from '../lib/types'
 import { IconShare, IconTrash } from '../components/icons'
-import { Bar, Button, CheckCircle, MonthSwitcher, Pill, Ring, SectionTitle, Sheet, toast } from '../components/ui'
+import { Bar, Button, CheckCircle, MonthSwitcher, Pill, Ring, SectionTitle, toast } from '../components/ui'
 import { WrappedSheet } from './WrappedSheet'
 import { SplitsCard } from './SplitsCard'
 import { BalancesCard } from './BalancesCard'
 
-export const TYPE_LABEL: Record<BillType, string> = { bill: 'Bill', subscription: 'Sub', savings: 'Savings', debt: 'Debt' }
 
 export function BudgetScreen({ onGoSettings }: { onGoSettings: () => void }) {
   const state = useStore()
@@ -22,7 +22,6 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: () => void }) {
   const used = available > 0 ? plan.spent / available : plan.spent > 0 ? 1 : 0
   const monthExpenses = state.expenses.filter((e) => e.date.startsWith(month)).sort((a, b) => (a.date < b.date ? 1 : -1))
   const [showAll, setShowAll] = useState(false)
-  const [moving, setMoving] = useState<MoveTarget | null>(null)
 
   return (
     <div>
@@ -73,7 +72,7 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: () => void }) {
           <SectionTitle>Paychecks</SectionTitle>
           <div className="space-y-4">
             {plan.plans.map((p, i) => (
-              <PaycheckCard key={payKey(p.pay)} plan={p} state={state} index={i} onAssign={setMoving} />
+              <PaycheckCard key={payKey(p.pay)} plan={p} state={state} index={i} />
             ))}
           </div>
         </>
@@ -118,7 +117,6 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: () => void }) {
                 )}
               </div>
               <p className="num text-lg font-semibold">{money(e.amount)}</p>
-              {where && <AssignButton name={name} onClick={() => setMoving({ kind: 'expense', id: e.id, name, where })} />}
               <button
                 className="press grid size-9 place-items-center rounded-full text-muted hover:bg-sunken hover:text-danger"
                 aria-label={`Delete ${e.note || 'expense'}`}
@@ -137,7 +135,6 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: () => void }) {
       <p className="mt-2 text-center text-xs text-muted">Recaps only show percentages — never your dollar amounts.</p>
 
       <WrappedSheet open={wrapped} onClose={() => setWrapped(false)} plan={plan} />
-      <PaycheckPicker target={moving} plan={plan} onClose={() => setMoving(null)} />
     </div>
   )
 }
@@ -151,20 +148,13 @@ function Stat({ label, value }: { label: string; value: string }) {
   )
 }
 
-/** A bill occurrence or expense being assigned to a paycheck. */
+/** A bill occurrence or expense that was moved for one month (moves made before assigning moved to Settings). */
 type MoveTarget = { kind: 'bill'; key: string; name: string; where: Placement } | { kind: 'expense'; id: string; name: string; where: Placement }
 
 function moveItem(target: MoveTarget, to: PayInstance) {
   const { original } = target.where
   update((s) => (target.kind === 'bill' ? assignBill(s, target.key, to, original) : assignExpense(s, target.id, to, original)))
-}
-
-function AssignButton({ name, onClick }: { name: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="press shrink-0 rounded-full bg-sunken px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent-soft" aria-label={`Assign ${name} to a paycheck`}>
-      Assign
-    </button>
-  )
+  toast(`Moved ${target.name} back`)
 }
 
 function MovedTag({ name, from, onBack }: { name: string; from: string | null; onBack?: () => void }) {
@@ -180,58 +170,7 @@ function MovedTag({ name, from, onBack }: { name: string; from: string | null; o
   )
 }
 
-/** Lists the month's paychecks (plus wherever the item is now and started) to assign it to one. */
-function PaycheckPicker({ target, plan, onClose }: { target: MoveTarget | null; plan: MonthPlan; onClose: () => void }) {
-  const { paychecks } = useStore()
-  if (!target) return null
-  const { current, original } = target.where
-  const byKey = new Map<string, PayInstance>()
-  for (const p of plan.plans) byKey.set(payKey(p.pay), p.pay)
-  byKey.set(payKey(current), current)
-  if (original) byKey.set(payKey(original), original)
-  const options = [...byKey.values()].sort((a, b) => (a.date < b.date ? -1 : 1))
-  const planFor = new Map(plan.plans.map((p) => [payKey(p.pay), p]))
-
-  return (
-    <Sheet open onClose={onClose} title={`Assign ${target.name}`}>
-      <p className="mb-3 text-sm text-muted">Choose the paycheck this {target.kind} comes out of.</p>
-      <div className="grid gap-2" role="radiogroup" aria-label={`Paycheck for ${target.name}`}>
-        {options.map((pay) => {
-          const isCurrent = payKey(pay) === payKey(current)
-          const isOriginal = !!original && payKey(pay) === payKey(original)
-          const p = planFor.get(payKey(pay))
-          return (
-            <button
-              key={payKey(pay)}
-              role="radio"
-              aria-checked={isCurrent}
-              onClick={() => {
-                if (!isCurrent) {
-                  moveItem(target, pay)
-                  toast(isOriginal ? `Moved ${target.name} back` : `Moved ${target.name} to ${paycheckLabel(paychecks, pay, false)}`)
-                }
-                onClose()
-              }}
-              className={`press flex items-center justify-between gap-3 rounded-2xl border-2 p-4 text-left ${isCurrent ? 'border-accent bg-accent-soft' : 'border-line hover:border-accent'}`}
-            >
-              <span>
-                <span className="block font-semibold">{paycheckLabel(paychecks, pay)}</span>
-                <span className="block text-xs text-muted">
-                  {money(pay.paycheck.amount)}
-                  {p && ` · ${p.left < 0 ? `short ${money(-p.left)}` : `${money(p.left)} free`}`}
-                  {isOriginal && ' · original'}
-                </span>
-              </span>
-              {isCurrent && <Pill tone="accent">Current</Pill>}
-            </button>
-          )
-        })}
-      </div>
-    </Sheet>
-  )
-}
-
-function PaycheckCard({ plan, state, index, onAssign }: { plan: PaycheckPlan; state: AppState; index: number; onAssign: (t: MoveTarget) => void }) {
+function PaycheckCard({ plan, state, index }: { plan: PaycheckPlan; state: AppState; index: number }) {
   const { pay } = plan
   const short = plan.left < 0
   const paidCount = plan.bills.filter((b) => b.paid).length
@@ -298,7 +237,8 @@ function PaycheckCard({ plan, state, index, onAssign }: { plan: PaycheckPlan; st
                   {b.bill.name}
                 </p>
                 <p className="text-xs text-muted">
-                  due {shortDate(b.due)} · {TYPE_LABEL[b.bill.type]}
+                  due {shortDate(b.due)} · {billTypeLabel(state.billTypes, b.bill.type, true)}
+                  {b.pinned && !b.moved && ' · assigned in Settings'}
                 </p>
                 {b.moved && (
                   <MovedTag
@@ -309,7 +249,6 @@ function PaycheckCard({ plan, state, index, onAssign }: { plan: PaycheckPlan; st
                 )}
               </div>
               <span className="num font-semibold">{money(b.bill.amount)}</span>
-              <AssignButton name={b.bill.name} onClick={() => onAssign({ kind: 'bill', key: b.key, name: b.bill.name, where: b })} />
             </li>
           ))}
         </ul>

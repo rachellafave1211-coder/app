@@ -8,13 +8,13 @@ import { emptyState, sampleState } from '../lib/seed'
 import { copy, shareOrCopy } from '../lib/share'
 import { getState, replaceState, setBalance, update, useStore } from '../lib/store'
 import { PRESETS } from '../lib/theme'
-import type { Bill, BillType, ThemeMode } from '../lib/types'
+import type { Bill, ThemeMode } from '../lib/types'
 import { IconBank, IconCheck, IconCloud, IconLink, IconPlus, IconTrash, IconUpload, IconUsers } from '../components/icons'
 import { Button, Pill, Segmented, toast } from '../components/ui'
 import { ImportSheet } from './ImportSheet'
 import { SyncPanel } from './SyncSection'
 import { syncSetupProblem, useSync, type SyncStatus } from '../lib/sync'
-import { TYPE_LABEL } from './BudgetScreen'
+import { BUILT_IN_TYPES, billTypeLabel } from '../lib/billTypes'
 
 function syncSubtitle(status: SyncStatus, email: string | null) {
   if (status === 'off') return syncSetupProblem ? 'Setting needs fixing' : 'Not set up yet'
@@ -97,7 +97,7 @@ function NumField({ value, onCommit, min = 0, max = 1e7, label, prefix, classNam
       <input
         inputMode="decimal"
         aria-label={label}
-        className={`field ${prefix ? 'pl-7' : ''}`}
+        className={`field ${prefix ? 'pl-8' : ''}`}
         value={text}
         onFocus={() => (focused.current = true)}
         onBlur={() => {
@@ -196,7 +196,7 @@ function PaychecksEditor() {
         <div key={p.id} className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-2">
           <NumField label="Pay day of month" value={p.day} min={1} max={31} onCommit={(day) => set(p.id, { day: Math.round(day) })} />
           <NumField label="Paycheck amount" prefix="$" value={p.amount} onCommit={(amount) => set(p.id, { amount })} />
-          <DeleteBtn label={`Remove paycheck on the ${ordinal(p.day)}`} onClick={() => update((s) => ({ ...s, paychecks: s.paychecks.filter((x) => x.id !== p.id) }))} />
+          <DeleteBtn label={`Remove paycheck on the ${ordinal(p.day)}`} onClick={() => update((s) => ({ ...s, paychecks: s.paychecks.filter((x) => x.id !== p.id), bills: s.bills.map((b) => (b.paycheckId === p.id ? { ...b, paycheckId: undefined } : b)) }))} />
         </div>
       ))}
       <p className="text-xs text-muted">Day of month · amount. Days past a month’s end land on its last day.</p>
@@ -231,43 +231,86 @@ function CategoriesEditor() {
   )
 }
 
-const TYPES: BillType[] = ['bill', 'subscription', 'savings', 'debt']
+function Chip({ on, onClick, children, label }: { on: boolean; onClick: () => void; children: ReactNode; label?: string }) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={on}
+      aria-label={label}
+      onClick={onClick}
+      className={`press rounded-full px-3 py-1.5 text-sm font-semibold ${on ? 'bg-accent text-on-accent' : 'bg-card text-ink'}`}
+    >
+      {children}
+    </button>
+  )
+}
 
 function BillsEditor() {
-  const { bills, household } = useStore()
+  const { bills, household, paychecks, billTypes } = useStore()
   const [openId, setOpenId] = useState<string | null>(null)
   const set = (id: string, patch: Partial<Bill>) => update((s) => ({ ...s, bills: s.bills.map((b) => (b.id === id ? { ...b, ...patch } : b)) }))
   const sorted = [...bills].sort((a, b) => a.day - b.day || a.name.localeCompare(b.name))
+  const checks = sortedPaychecks(paychecks)
+  const checkName = (id?: string) => {
+    const i = checks.findIndex((p) => p.id === id)
+    return i >= 0 ? `Paycheck ${i + 1}` : null
+  }
   return (
     <div>
       <ul className="divide-y divide-line">
         {sorted.map((b) => {
           const open = openId === b.id
+          const assigned = checkName(b.paycheckId)
           return (
             <li key={b.id} className="py-2">
               <button className="flex w-full items-center gap-3 py-1 text-left" onClick={() => setOpenId(open ? null : b.id)} aria-expanded={open}>
                 <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-sunken text-xs font-bold text-muted">{b.day}</span>
-                <span className="flex-1 font-medium">{b.name}</span>
-                <Pill tone="muted">{TYPE_LABEL[b.type]}</Pill>
-                <span className="num w-20 text-right font-semibold">${b.amount.toLocaleString()}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{b.name}</span>
+                  <span className="block text-xs text-muted">
+                    {billTypeLabel(billTypes, b.type)} · {assigned ? `from ${assigned}` : 'automatic paycheck'}
+                  </span>
+                </span>
+                <span className="num text-right font-semibold">${b.amount.toLocaleString()}</span>
               </button>
               {open && (
-                <div className="anim-pop mt-2 space-y-2 rounded-2xl bg-sunken/60 p-3">
-                  <input className="field" value={b.name} maxLength={40} onChange={(e) => set(b.id, { name: e.target.value })} aria-label="Bill name" />
-                  <div className="grid grid-cols-2 gap-2">
-                    <NumField label="Due day of month" value={b.day} min={1} max={31} onCommit={(day) => set(b.id, { day: Math.round(day) })} />
-                    <NumField label="Bill amount" prefix="$" value={b.amount} onCommit={(amount) => set(b.id, { amount })} />
+                <div className="anim-pop mt-2 space-y-4 rounded-2xl bg-sunken/60 p-3">
+                  <div className="space-y-2">
+                    <input className="field" value={b.name} maxLength={40} onChange={(e) => set(b.id, { name: e.target.value })} aria-label="Bill name" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <NumField label="Due day of month" value={b.day} min={1} max={31} onCommit={(day) => set(b.id, { day: Math.round(day) })} />
+                      <NumField label="Bill amount" prefix="$" value={b.amount} onCommit={(amount) => set(b.id, { amount })} />
+                    </div>
                   </div>
-                  <select className="field" value={b.type} onChange={(e) => set(b.id, { type: e.target.value as BillType })} aria-label="Bill type">
-                    {TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t[0].toUpperCase() + t.slice(1)}
-                      </option>
-                    ))}
-                  </select>
+
+                  <fieldset>
+                    <legend className="mb-1.5 text-sm font-semibold">Assign to paycheck</legend>
+                    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={`Paycheck for ${b.name}`}>
+                      <Chip on={!assigned} onClick={() => set(b.id, { paycheckId: undefined })}>
+                        Automatic
+                      </Chip>
+                      {checks.map((p, i) => (
+                        <Chip key={p.id} on={b.paycheckId === p.id} onClick={() => set(b.id, { paycheckId: p.id })} label={`Paycheck ${i + 1}, paid on the ${ordinal(p.day)}`}>
+                          Paycheck {i + 1} · {ordinal(p.day)}
+                        </Chip>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-xs text-muted">
+                      {assigned
+                        ? `Every month, ${b.name} comes out of the last ${assigned} before it’s due.`
+                        : `Every month, ${b.name} comes out of the last paycheck before it’s due.`}
+                    </p>
+                  </fieldset>
+
+                  <fieldset>
+                    <legend className="mb-1.5 text-sm font-semibold">Type</legend>
+                    <TypePicker value={b.type} onChange={(type) => set(b.id, { type })} billName={b.name} />
+                  </fieldset>
+
                   {household.members.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <span className="text-sm text-muted">Split with</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold">Split with</span>
                       {household.members.map((m) => {
                         const on = b.splitWith?.includes(m.id)
                         return (
@@ -301,6 +344,115 @@ function BillsEditor() {
       >
         Add bill
       </AddBtn>
+      <BillTypesManager />
+    </div>
+  )
+}
+
+/** Built-in and custom type chips, plus a field to create a new type on the spot. */
+function TypePicker({ value, onChange, billName }: { value: string; onChange: (type: string) => void; billName: string }) {
+  const { billTypes } = useStore()
+  const [adding, setAdding] = useState(false)
+  const [name, setName] = useState('')
+  const all = [...BUILT_IN_TYPES.map((t) => ({ id: t.id as string, name: t.name })), ...billTypes]
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={`Type for ${billName}`}>
+        {all.map((t) => (
+          <Chip key={t.id} on={value === t.id || (t.id === 'bill' && !all.some((x) => x.id === value))} onClick={() => onChange(t.id)}>
+            {t.name}
+          </Chip>
+        ))}
+        {!adding && (
+          <button type="button" onClick={() => setAdding(true)} className="press rounded-full border-2 border-dashed border-line px-3 py-1 text-sm font-semibold text-accent-text">
+            + New type
+          </button>
+        )}
+      </div>
+      {adding && (
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const id = addBillType(name)
+            if (id) onChange(id)
+            setName('')
+            setAdding(false)
+          }}
+        >
+          <input autoFocus className="field bg-card" placeholder="e.g. Insurance" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} aria-label="New bill type name" />
+          <Button type="submit" className="shrink-0" disabled={!name.trim()}>
+            Add
+          </Button>
+          <Button type="button" variant="ghost" className="shrink-0" onClick={() => setAdding(false)}>
+            Cancel
+          </Button>
+        </form>
+      )}
+      {value === 'savings' && <p className="text-xs text-muted">Checking off a Savings item moves its amount from Checking to Savings.</p>}
+    </div>
+  )
+}
+
+/** Adds a custom bill type, reusing one with the same name. Returns its id. */
+function addBillType(raw: string): string | null {
+  const name = raw.trim()
+  if (!name) return null
+  const s = getState()
+  const existing = [...BUILT_IN_TYPES.map((t) => ({ id: t.id as string, name: t.name })), ...s.billTypes].find((t) => t.name.toLowerCase() === name.toLowerCase())
+  if (existing) return existing.id
+  const id = uid()
+  update((st) => ({ ...st, billTypes: [...st.billTypes, { id, name }] }))
+  return id
+}
+
+function BillTypesManager() {
+  const { billTypes, bills } = useStore()
+  const [name, setName] = useState('')
+  return (
+    <div className="mt-5 rounded-2xl bg-sunken/60 p-3">
+      <p className="text-sm font-semibold">Bill types</p>
+      <p className="text-xs text-muted">Bill, Subscription, Savings and Debt are built in. Add your own, like Insurance or Loan.</p>
+      <ul className="mt-2 space-y-2">
+        {billTypes.map((t) => {
+          const used = bills.filter((b) => b.type === t.id).length
+          return (
+            <li key={t.id} className="flex items-center gap-2">
+              <input
+                className="field bg-card py-2"
+                value={t.name}
+                maxLength={30}
+                onChange={(e) => update((s) => ({ ...s, billTypes: s.billTypes.map((x) => (x.id === t.id ? { ...x, name: e.target.value } : x)) }))}
+                aria-label={`Rename ${t.name}`}
+              />
+              <span className="shrink-0 text-xs text-muted">{used === 1 ? '1 bill' : `${used} bills`}</span>
+              <DeleteBtn
+                label={`Delete type ${t.name}${used ? `; its bills become Bill` : ''}`}
+                onClick={() =>
+                  update((s) => ({
+                    ...s,
+                    billTypes: s.billTypes.filter((x) => x.id !== t.id),
+                    bills: s.bills.map((b) => (b.type === t.id ? { ...b, type: 'bill' } : b)),
+                  }))
+                }
+              />
+            </li>
+          )
+        })}
+      </ul>
+      <form
+        className="mt-2 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          addBillType(name)
+          setName('')
+        }}
+      >
+        <input className="field bg-card py-2" placeholder="New type name" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} aria-label="New bill type" />
+        <Button type="submit" variant="ghost" className="shrink-0 bg-card py-2" disabled={!name.trim()}>
+          Add type
+        </Button>
+      </form>
     </div>
   )
 }
@@ -428,7 +580,7 @@ function ImportPanel() {
       </div>
       <div className="space-y-2">
         <p className="text-sm font-semibold">Or paste CSV</p>
-        <textarea className="field min-h-24 font-mono text-sm" placeholder={'2026-09-12,Trader Joe’s,Groceries,54.20'} value={paste} onChange={(e) => setPaste(e.target.value)} aria-label="CSV text" />
+        <textarea className="field min-h-24 font-mono" placeholder={'2026-09-12,Trader Joe’s,Groceries,54.20'} value={paste} onChange={(e) => setPaste(e.target.value)} aria-label="CSV text" />
         <Button variant="ghost" className="w-full" disabled={!paste.trim()} onClick={() => load(paste)}>
           Review rows
         </Button>

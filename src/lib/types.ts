@@ -10,14 +10,24 @@ export interface Paycheck {
   amount: number
 }
 
-export type BillType = 'bill' | 'subscription' | 'savings' | 'debt'
+/** The four types every budget has. Savings items move money from Checking to Savings when paid. */
+export type BuiltInBillType = 'bill' | 'subscription' | 'savings' | 'debt'
+
+/** A bill type someone added, e.g. "Insurance". Bills of this type work like regular bills. */
+export interface CustomBillType {
+  id: Id
+  name: string
+}
 
 export interface Bill {
   id: Id
   name: string
   day: number
   amount: number
-  type: BillType
+  /** A built-in type, or the id of a custom type. */
+  type: BuiltInBillType | Id
+  /** Always pay from this paycheck (the last one before the due date). Unset means automatic. */
+  paycheckId?: Id
   /** Household members who split this bill equally with you. */
   splitWith?: Id[]
 }
@@ -93,6 +103,7 @@ export interface AppState {
   /** Bill occurrences moved to another paycheck: occurrence key → `paycheckId@YYYY-MM`. */
   assign: Record<string, string>
   tasks: Task[]
+  billTypes: CustomBillType[]
   household: Household
   /** Split repayments received, keyed by `billId@YYYY-MM@memberId`. */
   settled: Record<string, true>

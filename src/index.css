@@ -71,41 +71,44 @@ body {
   min-height: 100dvh;
 }
 
-.num {
-  font-family: var(--font-serif);
-  font-variant-numeric: lining-nums tabular-nums;
-  font-optical-sizing: auto;
-  letter-spacing: -0.02em;
-}
+/* Component classes live in a layer so Tailwind utilities (pl-8, py-2, bg-card…) can override them. */
+@layer components {
+  .num {
+    font-family: var(--font-serif);
+    font-variant-numeric: lining-nums tabular-nums;
+    font-optical-sizing: auto;
+    letter-spacing: -0.02em;
+  }
 
-.card {
-  background: var(--card);
-  border-radius: 24px;
-  box-shadow: var(--shadow);
-}
+  .card {
+    background: var(--card);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+  }
 
-.press {
-  transition: transform 120ms ease, background-color 160ms ease, opacity 160ms ease;
-}
-.press:active {
-  transform: scale(0.96);
-}
+  .press {
+    transition: transform 120ms ease, background-color 160ms ease, opacity 160ms ease;
+  }
+  .press:active {
+    transform: scale(0.96);
+  }
 
-.field {
-  width: 100%;
-  background: var(--sunken);
-  border: 1.5px solid transparent;
-  border-radius: 14px;
-  padding: 0.7rem 0.9rem;
-  color: var(--ink);
-  outline: none;
-  font-size: 16px; /* prevents iOS zoom on focus */
-}
-.field:focus {
-  border-color: var(--accent);
-}
-.field::placeholder {
-  color: var(--muted);
+  .field {
+    width: 100%;
+    background: var(--sunken);
+    border: 1.5px solid transparent;
+    border-radius: 14px;
+    padding: 0.7rem 0.9rem;
+    color: var(--ink);
+    outline: none;
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+  .field:focus {
+    border-color: var(--accent);
+  }
+  .field::placeholder {
+    color: var(--muted);
+  }
 }
 
 :focus-visible {

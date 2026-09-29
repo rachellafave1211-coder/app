@@ -225,7 +225,7 @@ function TodoList({ selected }: { selected: DateStr | null }) {
             <label htmlFor="task-due" className="shrink-0 text-sm text-muted">
               Due
             </label>
-            <input id="task-due" type="date" className="field py-2 text-sm" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Due date (optional)" />
+            <input id="task-due" type="date" className="field py-2" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Due date (optional)" />
             {due && (
               <button type="button" onClick={() => setDue('')} className="press shrink-0 rounded-full px-2 py-1 text-xs font-semibold text-muted hover:bg-sunken">
                 No date
