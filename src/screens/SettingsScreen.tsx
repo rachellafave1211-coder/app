@@ -489,25 +489,38 @@ function DataPanel() {
       >
         Copy backup (JSON)
       </Button>
-      <Button
-        variant="ghost"
-        className="w-full"
-        onClick={() => {
-          if (confirm('Replace your budget with the sample budget? Your theme is kept.')) replaceState({ ...sampleState(), theme: state.theme })
-        }}
-      >
+      <ConfirmButton variant="ghost" confirmText="Tap again to replace your budget" onConfirm={() => replaceState({ ...sampleState(), theme: state.theme })}>
         Load sample budget
-      </Button>
-      <Button
-        variant="danger"
-        className="w-full"
-        onClick={() => {
-          if (confirm('Clear all paychecks, bills, categories, expenses and reminders? This can’t be undone.')) replaceState({ ...emptyState(), theme: state.theme })
-        }}
-      >
+      </ConfirmButton>
+      <ConfirmButton variant="danger" confirmText="Tap again to erase everything" onConfirm={() => replaceState({ ...emptyState(), theme: state.theme })}>
         Clear all data
-      </Button>
+      </ConfirmButton>
+      <p className="text-xs text-muted">Loading the sample or clearing keeps your theme. Clearing can’t be undone.</p>
     </div>
+  )
+}
+
+/** Two-tap confirmation, so destructive actions don't depend on browser dialogs. */
+function ConfirmButton({ children, confirmText, onConfirm, variant }: { children: ReactNode; confirmText: string; onConfirm: () => void; variant: 'ghost' | 'danger' }) {
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    if (!armed) return
+    const t = setTimeout(() => setArmed(false), 4000)
+    return () => clearTimeout(t)
+  }, [armed])
+  return (
+    <Button
+      variant={armed ? 'danger' : variant}
+      className="w-full"
+      onClick={() => {
+        if (!armed) return setArmed(true)
+        setArmed(false)
+        onConfirm()
+        toast('Done')
+      }}
+    >
+      {armed ? confirmText : children}
+    </Button>
   )
 }
 
