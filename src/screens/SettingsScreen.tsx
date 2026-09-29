@@ -9,19 +9,31 @@ import { copy, shareOrCopy } from '../lib/share'
 import { getState, replaceState, setBalance, update, useStore } from '../lib/store'
 import { PRESETS } from '../lib/theme'
 import type { Bill, BillType, ThemeMode } from '../lib/types'
-import { IconBank, IconCheck, IconLink, IconPlus, IconTrash, IconUpload, IconUsers } from '../components/icons'
+import { IconBank, IconCheck, IconCloud, IconLink, IconPlus, IconTrash, IconUpload, IconUsers } from '../components/icons'
 import { Button, Pill, Segmented, toast } from '../components/ui'
 import { ImportSheet } from './ImportSheet'
+import { SyncPanel } from './SyncSection'
+import { useSync, type SyncStatus } from '../lib/sync'
 import { TYPE_LABEL } from './BudgetScreen'
+
+function syncSubtitle(status: SyncStatus, email: string | null) {
+  if (status === 'off') return 'Not set up yet'
+  if (status === 'signed-out') return 'Sign in to use your budget everywhere'
+  return email ?? 'Signed in'
+}
 
 export function SettingsScreen() {
   const state = useStore()
+  const sync = useSync()
   return (
     <div>
       <header className="px-1 pb-3">
         <h1 className="font-serif text-[28px] font-semibold tracking-tight">Settings</h1>
       </header>
       <div className="space-y-3">
+        <Section title="Sync across devices" subtitle={syncSubtitle(sync.status, sync.email)} icon={<IconCloud size={20} />}>
+          <SyncPanel />
+        </Section>
         <ThemeSection />
         <Section title="Account balances" subtitle="Checking and savings">
           <AccountsEditor />
@@ -482,6 +494,8 @@ function TemplateShare() {
 
 function DataPanel() {
   const state = useStore()
+  const { status } = useSync()
+  const everywhere = status !== 'off' && status !== 'signed-out'
   return (
     <div className="space-y-2">
       <Button
@@ -494,13 +508,13 @@ function DataPanel() {
       >
         Copy backup (JSON)
       </Button>
-      <ConfirmButton variant="ghost" confirmText="Tap again to replace your budget" onConfirm={() => replaceState({ ...sampleState(), theme: state.theme })}>
+      <ConfirmButton variant="ghost" confirmText={everywhere ? "Tap again to replace it on all devices" : "Tap again to replace your budget"} onConfirm={() => replaceState({ ...sampleState(), theme: state.theme })}>
         Load sample budget
       </ConfirmButton>
-      <ConfirmButton variant="danger" confirmText="Tap again to erase everything" onConfirm={() => replaceState({ ...emptyState(), theme: state.theme })}>
+      <ConfirmButton variant="danger" confirmText={everywhere ? "Tap again to erase on all devices" : "Tap again to erase everything"} onConfirm={() => replaceState({ ...emptyState(), theme: state.theme })}>
         Clear all data
       </ConfirmButton>
-      <p className="text-xs text-muted">Loading the sample or clearing keeps your theme. Clearing can’t be undone.</p>
+      <p className="text-xs text-muted">Loading the sample or clearing keeps your theme. Clearing can’t be undone.{everywhere && ' While you’re signed in, both apply to all your devices.'}</p>
     </div>
   )
 }

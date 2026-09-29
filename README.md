@@ -23,6 +23,32 @@ This version keeps all data in `localStorage` on the device. It opens with a sam
 
 After that, every push to the production branch redeploys, and every other branch gets its own preview URL.
 
+## Sync across devices (Supabase)
+
+Payday works without an account. To keep a budget and its balances the same on several devices, connect a free Supabase project:
+
+1. Create a project at https://supabase.com/dashboard.
+2. Open **SQL Editor**, paste the contents of `supabase/migrations/0001_budgets.sql`, and click **Run**. This creates the `budgets` table, locks each budget to its owner, and turns on live updates.
+3. Optional, but recommended for phones: add the sign-in code to the email (see the iPhone note below).
+4. Under **Authentication → URL Configuration**, set **Site URL** to your site (for example `https://app-bay-rho-90.vercel.app`). Also add `http://localhost:5173` under **Redirect URLs** if you run it locally.
+5. Under **Project Settings → API**, copy the **Project URL** and the **anon public** key.
+6. Add them as environment variables:
+   - On Vercel: Project → Settings → Environment Variables. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, then redeploy.
+   - Locally: copy `.env.example` to `.env` and fill it in.
+
+The anon key is meant to be public. Row-level security in the SQL above keeps each person's budget private.
+
+How it works:
+- People sign in from Settings → Sync across devices with an emailed link. There's no password.
+- The whole budget syncs, because balances come from paychecks, expenses and checked-off bills. Alert settings stay on each device.
+- Changes save automatically and show up on other open devices right away. Devices that were offline catch up when they reconnect or reopen.
+- If a device and the account both changed, Payday shows both versions and asks which to keep, instead of overwriting one. It also asks the first time a device signs in and its budget differs from the account's.
+- Signing out keeps the budget on that device.
+
+Supabase free-tier projects pause after a week without activity. Unpause the project from the dashboard if sync stops working.
+
+On an iPhone home-screen install, the email link opens in Safari, which doesn't sign in the installed app. To make sign-in work there, add the code to the email: in Supabase, go to **Authentication → Emails → Magic Link** and add a line such as `Or enter this code: {{ .Token }}` to the template. People then type the code in Settings.
+
 ## What's in it
 
 - **Budget.** Running Checking, Savings and Total balances (tap one to set it), a month switcher, a "Left to spend" hero with a progress ring, and one card per paycheck. Each card has Short/free pills, category bars that turn red when over budget, and bill check-offs. The ↪ button moves a bill to the next paycheck, and "undo" puts it back.

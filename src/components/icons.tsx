@@ -24,6 +24,7 @@ export const IconNext = (p: P) => base(p, <><path d="M5 6v5a3 3 0 0 0 3 3h11" />
 export const IconShare = (p: P) => base(p, <><path d="M12 15V4M8 8l4-4 4 4" /><path d="M6 12H5.5A1.5 1.5 0 0 0 4 13.5v5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-5a1.5 1.5 0 0 0-1.5-1.5H18" /></>)
 export const IconLink = (p: P) => base(p, <><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>)
 export const IconSparkle = (p: P) => base(p, <path d="M12 3.5 13.8 10l6.7 2-6.7 2L12 20.5 10.2 14 3.5 12l6.7-2Z" />)
+export const IconCloud = (p: P) => base(p, <path d="M7 18.5h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 9.1 4.75 4.75 0 0 0 7 18.5Z" />)
 export const IconBank = (p: P) => base(p, <><path d="m3.5 9 8.5-5 8.5 5M5 9v8M9.5 9v8M14.5 9v8M19 9v8M3.5 20h17" /></>)
 export const IconUpload = (p: P) => base(p, <><path d="M12 16V4M7.5 8.5 12 4l4.5 4.5" /><path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16" /></>)
 export const IconUsers = (p: P) => base(p, <><circle cx="9" cy="8" r="3.5" /><path d="M3 19.5a6 6 0 0 1 12 0" /><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.3a6 6 0 0 1 3 5.2" /></>)

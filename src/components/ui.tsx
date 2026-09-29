@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { IconCheck, IconChevronL, IconChevronR, IconX } from './icons'
 
-export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+export function Sheet({ open, onClose, title, children, required }: { open: boolean; onClose: () => void; title: string; children: ReactNode; /** Must be answered: no close button, Escape or backdrop dismissal. */ required?: boolean }) {
   const panel = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !required && onClose()
     document.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -14,11 +14,11 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prev
     }
-  }, [open, onClose])
+  }, [open, onClose, required])
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="anim-fade absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="anim-fade absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={required ? undefined : onClose} />
       <div
         ref={panel}
         tabIndex={-1}
@@ -27,9 +27,11 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-line" />
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-serif text-2xl font-semibold">{title}</h2>
-          <button onClick={onClose} className="press grid size-9 place-items-center rounded-full bg-sunken text-muted" aria-label="Close">
-            <IconX size={18} />
-          </button>
+          {!required && (
+            <button onClick={onClose} className="press grid size-9 place-items-center rounded-full bg-sunken text-muted" aria-label="Close">
+              <IconX size={18} />
+            </button>
+          )}
         </div>
         <div className="pb-6">{children}</div>
       </div>
