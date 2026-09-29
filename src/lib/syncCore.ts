@@ -1,5 +1,6 @@
 import { normalizeState } from './budget'
 import { emptyState } from './seed'
+import type { EmailOtpType } from '@supabase/supabase-js'
 import type { AppState } from './types'
 
 /** Fields that describe this device, not the budget. They never sync. */
@@ -59,4 +60,29 @@ export function plan(opts: {
   if (remoteChanged && dirty) return 'conflict'
   if (remoteChanged) return 'apply'
   return dirty ? 'push' : 'none'
+}
+
+export type ParsedLink =
+  | { kind: 'session'; access: string; refresh: string }
+  | { kind: 'otp'; token: string; types: EmailOtpType[] }
+  | { error: string }
+
+/** Read a sign-in link copied from the email: its one-time code, or a finished session. */
+export function parseSignInLink(raw: string): ParsedLink {
+  let url: URL
+  try {
+    url = new URL(raw.trim())
+  } catch {
+    return { error: 'That doesn’t look like a link. In the email, press and hold the sign-in link, tap Copy, and paste it here.' }
+  }
+  // A link that already went through sign-in carries a session in its hash.
+  const hash = new URLSearchParams(url.hash.slice(1))
+  const access = hash.get('access_token')
+  const refresh = hash.get('refresh_token')
+  if (access && refresh) return { kind: 'session', access, refresh }
+  const token = url.searchParams.get('token_hash') ?? url.searchParams.get('token')
+  if (!token) return { error: 'That link has no sign-in code. Copy the link from the Payday sign-in email.' }
+  const type = url.searchParams.get('type')
+  const types: EmailOtpType[] = type === 'signup' ? ['signup', 'email'] : type === 'magiclink' ? ['magiclink', 'email'] : ['email']
+  return { kind: 'otp', token, types }
 }

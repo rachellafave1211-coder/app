@@ -23,6 +23,17 @@ This version keeps all data in `localStorage` on the device. It opens with a sam
 
 After that, every push to the production branch redeploys, and every other branch gets its own preview URL.
 
+## Install Payday as an app
+
+Payday installs as a home-screen app, with its own icon and a full-screen window without browser bars.
+
+- **iPhone or iPad:** open the site in **Safari**, tap **Share**, then **Add to Home Screen**.
+- **Android:** open the site in **Chrome**, tap **⋮**, then **Install app**.
+
+On an iPhone or iPad, the installed app keeps its own data, separate from Safari, and starts signed out. Tapping the sign-in link in the email opens Safari, not the app. So to sign in inside the app, request the email from the app's Settings, then press and hold the link in the email, tap **Copy**, and paste it into **Settings → Sync across devices → Paste your sign-in link**.
+
+App icons are in `public/icons` and are generated from `scripts/icon.svg`: `PLAYWRIGHT_PATH=<path to playwright> node scripts/make-icons.mjs`. To list Payday in the App Store or Google Play, package the live site with https://www.pwabuilder.com.
+
 ## Sync across devices (Supabase)
 
 Payday works without an account. To keep a budget and its balances the same on several devices, connect a free Supabase project:
@@ -51,7 +62,7 @@ How it works:
 Limits of Supabase's built-in email sender (connect your own SMTP service under Authentication settings to remove them):
 - It only sends to members of your Supabase organization, so sign in with the email you signed up to Supabase with.
 - It sends only a few emails per hour.
-- Email templates can't be edited. So sign-in is link-only, and an iPhone home-screen install can't sign in, because the link opens in Safari instead of the installed app. Use Payday in Safari, or add custom SMTP and put `{{ .Token }}` in the **Confirm signup** and **Magic Link** templates so people can type the 6-digit code in Settings.
+- Email templates can't be edited, so sign-in is link-only. In a home-screen app, paste the link instead (see above). With custom SMTP, you can also put `{{ .Token }}` in the **Confirm signup** and **Magic Link** templates so people can type a 6-digit code.
 
 Supabase free-tier projects pause after a week without activity. Unpause the project from the dashboard if sync stops working.
 
