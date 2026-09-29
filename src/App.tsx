@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { readLink, type LinkPayload } from './lib/links'
 import { checkAndNotify } from './lib/notify'
+import { startSync } from './lib/sync'
 import { useStore } from './lib/store'
 import { applyTheme } from './lib/theme'
 import { IconBell, IconCalendar, IconPlus, IconSettings, IconWallet } from './components/icons'
@@ -9,6 +10,7 @@ import { AddExpenseSheet } from './screens/AddExpenseSheet'
 import { BudgetScreen } from './screens/BudgetScreen'
 import { CalendarScreen } from './screens/CalendarScreen'
 import { LinkSheet } from './screens/LinkSheet'
+import { ConflictSheet } from './screens/SyncSection'
 import { RemindersScreen } from './screens/RemindersScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 
@@ -33,13 +35,16 @@ export default function App() {
   useEffect(() => {
     const read = () => {
       const p = readLink(location.hash)
-      if (p) setLink(p)
-      if (location.hash) history.replaceState(null, '', location.pathname + location.search)
+      if (!p) return // Leave other hashes alone, e.g. the sign-in link's token.
+      setLink(p)
+      history.replaceState(null, '', location.pathname + location.search)
     }
     read()
     addEventListener('hashchange', read)
     return () => removeEventListener('hashchange', read)
   }, [])
+
+  useEffect(() => startSync(), [])
 
   // Local bill and reminder alerts.
   useEffect(() => {
@@ -88,6 +93,7 @@ export default function App() {
 
       <AddExpenseSheet open={adding} onClose={() => setAdding(false)} />
       <LinkSheet payload={link} onClose={() => setLink(null)} />
+      <ConflictSheet />
       <Toaster />
     </div>
   )

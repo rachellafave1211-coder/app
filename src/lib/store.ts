@@ -36,13 +36,16 @@ export function replaceState(next: AppState): void {
   update(() => next)
 }
 
-function subscribe(l: () => void) {
+/** Run `l` after every state change. Returns an unsubscribe function. */
+export function subscribeStore(l: () => void) {
   listeners.add(l)
-  return () => listeners.delete(l)
+  return () => {
+    listeners.delete(l)
+  }
 }
 
 export function useStore(): AppState {
-  return useSyncExternalStore(subscribe, getState)
+  return useSyncExternalStore(subscribeStore, getState)
 }
 
 /** Set an account to the amount you have now; later activity moves it from here. */
