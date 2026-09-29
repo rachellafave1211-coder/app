@@ -3,12 +3,31 @@ import { useSyncExternalStore } from 'react'
 import { getState, replaceState, subscribeStore } from './store'
 import { fromSynced, plan, stableStringify, syncedKey, toSynced, type SyncedData } from './syncCore'
 
-const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+const URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim()
+const KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim()
 
-/** Sync is available only when the site was built with Supabase settings. */
-export const syncConfigured = !!(URL && KEY)
-const supabase: SupabaseClient | null = syncConfigured ? createClient(URL!, KEY!) : null
+/** Why the site's Supabase settings can't be used, if they're present but wrong. */
+export let syncSetupProblem: string | null = null
+
+function makeClient(): SupabaseClient | null {
+  if (!URL || !KEY) return null
+  if (!/^https:\/\/[^\s/]+/.test(URL)) {
+    syncSetupProblem = `VITE_SUPABASE_URL should start with https:// (it's currently “${URL.slice(0, 40)}”).`
+    return null
+  }
+  try {
+    return createClient(URL, KEY)
+  } catch (e) {
+    // A bad setting must never stop the app from loading.
+    syncSetupProblem = (e as Error).message
+    return null
+  }
+}
+
+const supabase = makeClient()
+
+/** Sync is available only when the site was built with working Supabase settings. */
+export const syncConfigured = supabase !== null
 
 interface Row {
   data: SyncedData

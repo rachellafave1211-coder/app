@@ -13,11 +13,11 @@ import { IconBank, IconCheck, IconCloud, IconLink, IconPlus, IconTrash, IconUplo
 import { Button, Pill, Segmented, toast } from '../components/ui'
 import { ImportSheet } from './ImportSheet'
 import { SyncPanel } from './SyncSection'
-import { useSync, type SyncStatus } from '../lib/sync'
+import { syncSetupProblem, useSync, type SyncStatus } from '../lib/sync'
 import { TYPE_LABEL } from './BudgetScreen'
 
 function syncSubtitle(status: SyncStatus, email: string | null) {
-  if (status === 'off') return 'Not set up yet'
+  if (status === 'off') return syncSetupProblem ? 'Setting needs fixing' : 'Not set up yet'
   if (status === 'signed-out') return 'Sign in to use your budget everywhere'
   return email ?? 'Signed in'
 }

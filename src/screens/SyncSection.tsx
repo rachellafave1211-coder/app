@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { balances } from '../lib/budget'
 import { money } from '../lib/format'
 import { useStore } from '../lib/store'
-import { resolveConflict, sendSignInLink, signOut, syncConfigured, syncNow, useSync, verifyCode, type SyncStatus } from '../lib/sync'
+import { resolveConflict, sendSignInLink, signOut, syncConfigured, syncSetupProblem, syncNow, useSync, verifyCode, type SyncStatus } from '../lib/sync'
 import { fromSynced } from '../lib/syncCore'
 import { Button, Pill, Sheet, toast } from '../components/ui'
 
@@ -22,6 +22,16 @@ export function SyncPanel() {
   const [sentTo, setSentTo] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [code, setCode] = useState('')
+
+  if (!syncConfigured && syncSetupProblem) {
+    return (
+      <div className="space-y-2 text-sm">
+        <p className="font-semibold text-danger">Sync is set up, but one of its settings looks wrong.</p>
+        <p className="text-muted">{syncSetupProblem}</p>
+        <p className="text-muted">Fix it in Vercel under Settings → Environment Variables, then redeploy. Your budget keeps working on this device in the meantime.</p>
+      </div>
+    )
+  }
 
   if (!syncConfigured) {
     return (
