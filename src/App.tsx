@@ -65,8 +65,7 @@ export default function App() {
 
   return (
     <div className="min-h-dvh">
-      {/* The calendar uses the whole page; other screens keep a phone-width column. */}
-      <main className={`pt-safe mx-auto px-4 ${tab === 'calendar' ? 'pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6' : 'max-w-md pb-32'}`}>
+      <main className="pt-safe mx-auto max-w-md px-4 pb-32">
         {tab === 'budget' && <BudgetScreen onGoSettings={() => go('settings')} />}
         {tab === 'calendar' && <CalendarScreen />}
         {tab === 'reminders' && <RemindersScreen />}

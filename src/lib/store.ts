@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { normalizeState } from './budget'
 import { emptyState, sampleState } from './seed'
 import type { AppState } from './types'
 
@@ -7,7 +8,7 @@ const KEY = 'payday:v1'
 function load(): AppState {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return { ...emptyState(), ...JSON.parse(raw) }
+    if (raw) return normalizeState({ ...emptyState(), ...JSON.parse(raw) })
   } catch {
     // Fall through to the sample budget.
   }
