@@ -13,6 +13,16 @@ npm run build     # typecheck + production build in dist/
 
 This version keeps all data in `localStorage` on the device. It opens with a sample budget, which you can edit or clear from Settings.
 
+## Deploy (Vercel)
+
+`vercel.json` is already set up. To deploy:
+
+1. Go to https://vercel.com/new and sign in with GitHub.
+2. Import this repo. Vercel detects Vite, so leave the settings as they are.
+3. Click **Deploy**.
+
+After that, every push to the production branch redeploys, and every other branch gets its own preview URL.
+
 ## What's in it
 
 - **Budget.** Month switcher, a "Left to spend" hero with a progress ring, and one card per paycheck. Each card has Short/free pills, category bars that turn red when over budget, and bill check-offs. The ↪ button moves a bill to the next paycheck, and "undo" puts it back.
