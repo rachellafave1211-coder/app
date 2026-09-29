@@ -1,0 +1,54 @@
+import { useSyncExternalStore } from 'react'
+import { emptyState, sampleState } from './seed'
+import type { AppState } from './types'
+
+const KEY = 'payday:v1'
+
+function load(): AppState {
+  try {
+    const raw = localStorage.getItem(KEY)
+    if (raw) return { ...emptyState(), ...JSON.parse(raw) }
+  } catch {
+    // Fall through to the sample budget.
+  }
+  return sampleState()
+}
+
+let state: AppState = load()
+const listeners = new Set<() => void>()
+
+export function getState(): AppState {
+  return state
+}
+
+/** Replace state immutably: `update(s => ({ ...s, bills: [...] }))`. */
+export function update(fn: (s: AppState) => AppState): void {
+  state = fn(state)
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state))
+  } catch {
+    // Storage full or blocked; keep working in memory.
+  }
+  listeners.forEach((l) => l())
+}
+
+export function replaceState(next: AppState): void {
+  update(() => next)
+}
+
+function subscribe(l: () => void) {
+  listeners.add(l)
+  return () => listeners.delete(l)
+}
+
+export function useStore(): AppState {
+  return useSyncExternalStore(subscribe, getState)
+}
+
+/** Toggle a key in one of the `Record<string, true>` maps. */
+export function toggleFlag(map: Record<string, true>, key: string): Record<string, true> {
+  const next = { ...map }
+  if (next[key]) delete next[key]
+  else next[key] = true
+  return next
+}
