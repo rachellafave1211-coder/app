@@ -117,6 +117,47 @@ describe('planMonth', () => {
     expect(s.expenses[0].paycheck).toBeUndefined()
   })
 
+  it('uses the paycheck a bill is assigned to in Settings, every month', () => {
+    const s = sampleState()
+    s.bills = s.bills.map((b) => (b.name === 'Rent' ? { ...b, paycheckId: 'p3' } : b))
+    for (const m of ['2026-09', '2026-10', '2026-11']) {
+      const plans = planMonth(s, m).plans
+      expect(plans[0].bills.map((b) => b.bill.name)).not.toContain('Rent')
+      const rent = plans[2].bills.find((b) => b.bill.name === 'Rent')!
+      // Paid from the 20th before it's due on the 1st.
+      expect(rent.due > plans[2].pay.date).toBe(true)
+      expect(rent.pinned && !rent.moved).toBe(true)
+    }
+  })
+
+  it('lets an older one-month move win over the Settings paycheck, and Move back returns to it', () => {
+    let s = sampleState()
+    s.bills = s.bills.map((b) => (b.name === 'Gym' ? { ...b, paycheckId: 'p2' } : b))
+    const [p1, p2] = planMonth(s, '2026-10').plans
+    const gym = p2.bills.find((b) => b.bill.name === 'Gym')!
+    s = { ...s, assign: { [gym.key]: payKey(p1.pay) } }
+    const moved = planMonth(s, '2026-10').plans[0].bills.find((b) => b.bill.name === 'Gym')!
+    expect(moved.moved).toBe(true)
+    expect(payKey(moved.original!)).toBe(payKey(p2.pay))
+    s = assignBill(s, gym.key, moved.original!, moved.original)
+    expect(names(s, '2026-10')[1]).toContain('Gym')
+  })
+
+  it('goes back to automatic when the Settings paycheck is deleted', () => {
+    const s = sampleState()
+    s.bills = s.bills.map((b) => (b.name === 'Rent' ? { ...b, paycheckId: 'gone' } : b))
+    expect(names(s, '2026-10')[0]).toContain('Rent')
+  })
+
+  it('keeps every bill on exactly one paycheck when bills are assigned in Settings', () => {
+    const s = sampleState()
+    s.bills = s.bills.map((b, i) => ({ ...b, paycheckId: ['p1', 'p2', 'p3', undefined][i % 4] }))
+    const seen = new Map<string, number>()
+    const months = ['2026-08', '2026-09', '2026-10', '2026-11', '2026-12', '2027-01']
+    for (const m of months) for (const p of planMonth(s, m).plans) for (const b of p.bills) seen.set(b.key, (seen.get(b.key) ?? 0) + 1)
+    for (const m of months.slice(1, 5)) for (const bill of s.bills) expect(seen.get(occurrenceKey(bill.id, m))).toBe(1)
+  })
+
   it('turns old "N paychecks later" moves into assignments', () => {
     const old = { ...sampleState(), shifts: { [occurrenceKey('b-gym', '2026-10')]: 1, [occurrenceKey('b-savings', '2026-10')]: 1 } }
     const s = normalizeState(old as never)

@@ -19,12 +19,15 @@ export interface BillOccurrence {
   paid: boolean
 }
 
-/** Where a bill occurrence or an expense sits: the paycheck it counts toward, and the one its date gave it. */
+/** Where a bill occurrence or an expense sits: the paycheck it counts toward, and where it would normally be. */
 export interface Placement {
   current: PayInstance
-  /** The paycheck it was automatically assigned to by its date; null if no payday came before it. */
+  /** Where it normally goes: the bill's paycheck from Settings, else the last payday on or before its date. */
   original: PayInstance | null
+  /** Moved away from `original` for just this month (older one-off moves). */
   moved: boolean
+  /** The bill is assigned to a paycheck in Settings. */
+  pinned: boolean
 }
 
 export type PlannedBill = BillOccurrence & Placement
@@ -91,17 +94,26 @@ function autoIndex(instances: PayInstance[], date: DateStr): number {
   return idx
 }
 
+/** The last payday of one particular paycheck on or before `date`. */
+function paycheckIndex(instances: PayInstance[], date: DateStr, paycheckId: string): number {
+  let idx = -1
+  for (let i = 0; i < instances.length && instances[i].date <= date; i++) if (instances[i].paycheck.id === paycheckId) idx = i
+  return idx
+}
+
 /**
- * Where an item with this date counts. An assignment wins when its paycheck still exists;
- * otherwise the item falls back to its automatic paycheck, so it is never dropped.
+ * Where an item with this date counts: a one-month move first, then the bill's paycheck from
+ * Settings, then the last payday on or before the date. A choice whose paycheck no longer exists
+ * is skipped, so an item always lands on exactly one paycheck.
  */
-function place(instances: PayInstance[], date: DateStr, assigned: string | undefined): Placement | null {
-  const auto = autoIndex(instances, date)
+function place(instances: PayInstance[], date: DateStr, assigned: string | undefined, pinnedTo?: string): Placement | null {
+  const pin = pinnedTo ? paycheckIndex(instances, date, pinnedTo) : -1
+  const base = pin >= 0 ? pin : autoIndex(instances, date)
   const chosen = assigned ? instances.findIndex((i) => payKey(i) === assigned) : -1
-  const idx = chosen >= 0 ? chosen : auto
+  const idx = chosen >= 0 ? chosen : base
   if (idx < 0) return null
-  const original = auto >= 0 ? instances[auto] : null
-  return { current: instances[idx], original, moved: !original || idx !== auto }
+  const original = base >= 0 ? instances[base] : null
+  return { current: instances[idx], original, moved: !original || idx !== base, pinned: pin >= 0 }
 }
 
 /** Where an expense counts, and where its date put it. */
@@ -139,7 +151,7 @@ export function planMonth(state: PlanInput, month: MonthKey): MonthPlan {
     for (let m = addMonths(month, -2); m <= addMonths(month, 2); m = addMonths(m, 1)) {
       const key = occurrenceKey(bill.id, m)
       const due = dateInMonth(m, bill.day)
-      const where = place(instances, due, state.assign[key])
+      const where = place(instances, due, state.assign[key], bill.paycheckId)
       const plan = where && byKey.get(payKey(where.current))
       if (plan) plan.bills.push({ bill, due, key, paid: !!state.paid[key], ...where! })
     }

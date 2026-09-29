@@ -57,10 +57,10 @@ Supabase free-tier projects pause after a week without activity. Unpause the pro
 
 ## What's in it
 
-- **Budget.** Running Checking, Savings and Total balances (tap one to set it), a month switcher, a "Left to spend" hero with a progress ring, and one card per paycheck. Each card has Short/free pills, category bars that turn red when over budget, and bill check-offs. **Assign** on a bill or expense picks the paycheck it comes out of for that month; a moved item shows "Moved from Paycheck N" and **Move back** returns it.
+- **Budget.** Running Checking, Savings and Total balances (tap one to set it), a month switcher, a "Left to spend" hero with a progress ring, and one card per paycheck. Each card has Short/free pills, category bars that turn red when over budget, and bill check-offs. Bills assigned to a paycheck in Settings are marked "assigned in Settings".
 - **Calendar.** A compact month grid with dots for paydays, bills, reminders and unfinished tasks. Tap a day to see its paycheck, bills, reminders and tasks. Below it, a to-do list: tasks with an optional due date (a selected day becomes the new task's due date).
-- **Reminders.** Your own dated reminders, bills due in the next 7 days, and local notifications (a service worker handles them once the app is installed).
-- **Settings.** 6 preset accents plus a custom color, light/dark/auto, account balances, and editors for paychecks, categories and bills. Also: shared budgets with rent-split tracking, CSV / Google Sheets import, the bank card, template links and data reset.
+- **Reminders.** An agenda of what's coming up, grouped into Overdue, Today, Tomorrow, each day this week, and Later. Unpaid bills due this week and your reminders are marked with colored dots. Finished reminders go to a collapsible Completed list. Local notifications work too (a service worker handles them once the app is installed).
+- **Settings.** 6 preset accents plus a custom color, light/dark/auto, account balances, and editors for paychecks, categories and bills. Each bill can be assigned to a specific paycheck and given a type: Bill, Subscription, Savings, Debt, or one you add. Also: shared budgets with rent-split tracking, CSV / Google Sheets import, the bank card, template links and data reset.
 - **Add expense (+).** A bottom sheet with amount, category chips, an optional note and a date.
 - **Sharing.**
   - A *Paycheck Wrapped* recap image in your theme colors that shows percentages only.
@@ -78,7 +78,7 @@ Un-checking a bill or deleting an expense reverses its effect. Anything dated or
 
 ### How bills are assigned
 
-A bill is paid from the latest payday on or before its due date. A bill that's due before the month's first payday falls to the previous month's last paycheck. Assigning a bill to another paycheck changes only that month's occurrence, and expenses can be assigned the same way. Every item still appears under exactly one paycheck: if the paycheck it was assigned to is deleted, it returns to its automatic one. The logic lives in `src/lib/budget.ts` and is covered by `src/lib/budget.test.ts`.
+A bill is paid from the latest payday on or before its due date. A bill that's due before the month's first payday falls to the previous month's last paycheck. A bill assigned to a paycheck in Settings comes out of the last payday of that paycheck on or before its due date, every month. Every item appears under exactly one paycheck. If the paycheck a bill is assigned to is deleted, the bill goes back to automatic. One-month moves made in earlier versions still apply until you tap **Move back**. The logic lives in `src/lib/budget.ts` and is covered by `src/lib/budget.test.ts`.
 
 ### Import
 

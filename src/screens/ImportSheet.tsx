@@ -83,7 +83,7 @@ export function ImportSheet({ rows, skipped, onClose }: { rows: ImportRow[] | nu
                   </button>
                 </>
               ) : (
-                <select className="field py-1.5 text-sm" value={d.categoryId} onChange={(e) => set(d.key, { categoryId: e.target.value })} aria-label={`Category for ${d.name}`}>
+                <select className="field py-1.5" value={d.categoryId} onChange={(e) => set(d.key, { categoryId: e.target.value })} aria-label={`Category for ${d.name}`}>
                   <option value="">Uncategorized</option>
                   {state.categories.map((c) => (
                     <option key={c.id} value={c.id}>

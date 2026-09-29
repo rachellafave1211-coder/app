@@ -1,8 +1,8 @@
-import type { AppState, Bill, BillType } from './types'
+import type { AppState, Bill, BuiltInBillType } from './types'
 
 export const DEFAULT_ACCENT = '#d6457a'
 
-const bill = (id: string, name: string, day: number, amount: number, type: BillType): Bill => ({ id, name, day, amount, type })
+const bill = (id: string, name: string, day: number, amount: number, type: BuiltInBillType): Bill => ({ id, name, day, amount, type })
 
 export function sampleState(): AppState {
   return {
@@ -48,6 +48,7 @@ export function emptyState(): AppState {
     accounts: { checking: { start: 0, since: Date.now() }, savings: { start: 0, since: Date.now() } },
     assign: {},
     tasks: [],
+    billTypes: [],
     household: { name: 'Our place', members: [] },
     settled: {},
     notificationsOn: false,

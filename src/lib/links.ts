@@ -1,9 +1,17 @@
 import { uid } from './format'
-import type { AppState, Bill, BillType, Category, Household, Paycheck } from './types'
+import { BUILT_IN_TYPES } from './billTypes'
+import type { AppState, Bill, Category, CustomBillType, Household, Paycheck } from './types'
 
 /** Shareable links carry their payload in the URL hash, so nothing leaves the device until shared. */
 export type LinkPayload =
-  | { kind: 'template'; name: string; paychecks: Omit<Paycheck, 'id'>[]; categories: Omit<Category, 'id'>[]; bills: Omit<Bill, 'id' | 'splitWith'>[] }
+  | {
+      kind: 'template'
+      name: string
+      paychecks: Omit<Paycheck, 'id'>[]
+      categories: Omit<Category, 'id'>[]
+      bills: Omit<Bill, 'id' | 'splitWith' | 'paycheckId'>[]
+      billTypes: CustomBillType[]
+    }
   | { kind: 'household'; household: Household; from: string; splits: { name: string; day: number; amount: number }[] }
 
 function encode(obj: unknown): string {
@@ -30,6 +38,7 @@ export function templateLink(state: AppState, includeAmounts: boolean): string {
     paychecks: state.paychecks.map((p) => ({ day: p.day, amount: amt(p.amount) })),
     categories: state.categories.map((c) => ({ name: c.name, emoji: c.emoji, budget: amt(c.budget) })),
     bills: state.bills.map((b) => ({ name: b.name, day: b.day, amount: amt(b.amount), type: b.type })),
+    billTypes: state.billTypes.filter((t) => state.bills.some((b) => b.type === t.id)),
   })
 }
 
@@ -42,7 +51,6 @@ export function householdLink(state: AppState, from: string): string {
   })
 }
 
-const TYPES: BillType[] = ['bill', 'subscription', 'savings', 'debt']
 const num = (v: unknown, lo: number, hi: number) => (typeof v === 'number' && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : lo)
 const str = (v: unknown, max = 60) => (typeof v === 'string' ? v.slice(0, max) : '')
 const arr = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.slice(0, 100).filter((x) => x && typeof x === 'object') : [])
@@ -54,6 +62,8 @@ export function readLink(hash: string): LinkPayload | null {
   try {
     const raw = decode(m[2]) as Record<string, unknown>
     if (m[1] === 'template') {
+      const billTypes = arr(raw.billTypes).map((t) => ({ id: str(t.id, 20) || uid(), name: str(t.name, 30) || 'Other' }))
+      const known = new Set<string>([...BUILT_IN_TYPES.map((t) => t.id), ...billTypes.map((t) => t.id)])
       return {
         kind: 'template',
         name: str(raw.name) || 'Budget template',
@@ -63,8 +73,9 @@ export function readLink(hash: string): LinkPayload | null {
           name: str(b.name) || 'Bill',
           day: num(b.day, 1, 31),
           amount: num(b.amount, 0, 1e7),
-          type: TYPES.includes(b.type as BillType) ? (b.type as BillType) : 'bill',
+          type: known.has(str(b.type, 20)) ? str(b.type, 20) : 'bill',
         })),
+        billTypes,
       }
     }
     const h = (raw.household ?? {}) as Record<string, unknown>
@@ -85,6 +96,7 @@ export function applyTemplate(state: AppState, t: Extract<LinkPayload, { kind: '
     paychecks: t.paychecks.map((p) => ({ ...p, id: uid() })),
     categories: t.categories.map((c) => ({ ...c, id: uid() })),
     bills: t.bills.map((b) => ({ ...b, id: uid() })),
+    billTypes: t.billTypes,
     paid: {},
     assign: {},
   }
