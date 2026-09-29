@@ -32,7 +32,7 @@ Payday installs as a home-screen app, with its own icon and a full-screen window
 
 On an iPhone or iPad, the installed app keeps its own data, separate from Safari, and starts signed out. Tapping the sign-in link in the email opens Safari, not the app. So to sign in inside the app, request the email from the app's Settings, then press and hold the link in the email, tap **Copy**, and paste it into **Settings → Sync across devices → Paste your sign-in link**.
 
-App icons are in `public/icons` and are generated from `scripts/icon.svg`: `PLAYWRIGHT_PATH=<path to playwright> node scripts/make-icons.mjs`. To list Payday in the App Store or Google Play, package the live site with https://www.pwabuilder.com.
+App icons are in `public/icons`. They are generated from `scripts/icon-source.png` (a square, opaque image; replace it to change the icon): `PLAYWRIGHT_PATH=<path to playwright> node scripts/make-icons.mjs`. To list Payday in the App Store or Google Play, package the live site with https://www.pwabuilder.com.
 
 ## Sync across devices (Supabase)
 

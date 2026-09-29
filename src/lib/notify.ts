@@ -18,8 +18,8 @@ export async function enableNotifications(): Promise<boolean> {
 
 async function show(title: string, body: string, tag: string) {
   const reg = await navigator.serviceWorker?.getRegistration().catch(() => undefined)
-  if (reg) await reg.showNotification(title, { body, tag, icon: '/icon.svg' })
-  else new Notification(title, { body, tag, icon: '/icon.svg' })
+  if (reg) await reg.showNotification(title, { body, tag, icon: '/icons/icon-192.png' })
+  else new Notification(title, { body, tag, icon: '/icons/icon-192.png' })
 }
 
 /**
