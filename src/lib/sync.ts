@@ -3,7 +3,9 @@ import { useSyncExternalStore } from 'react'
 import { getState, replaceState, subscribeStore } from './store'
 import { fromSynced, plan, stableStringify, syncedKey, toSynced, type SyncedData } from './syncCore'
 
-const URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim()
+const RAW_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim()
+// Supabase sometimes shows the address with a path such as /rest/v1/; the client needs just the origin.
+const URL = RAW_URL?.replace(/^(https:\/\/[^/\s]+).*$/, '$1')
 const KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim()
 
 /** Why the site's Supabase settings can't be used, if they're present but wrong. */
