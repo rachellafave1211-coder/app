@@ -1,4 +1,4 @@
-import { addMonths, dateInMonth } from './dates'
+import { addMonths, dateInMonth, toDateStr } from './dates'
 import type { AppState, Bill, Category, DateStr, Expense, MonthKey, Paycheck } from './types'
 
 /** One paycheck landing on a specific date. */
@@ -64,20 +64,14 @@ export function payInstances(paychecks: Paycheck[], from: MonthKey, to: MonthKey
 }
 
 /**
- * Which pay instance covers a bill occurrence:
- * pinned → that paycheck in the due month; otherwise the last payday on or before the due date.
+ * Which pay instance covers a bill occurrence: the last payday on or before the due date.
  * A shift then moves it N paychecks later.
  */
-function assignIndex(instances: PayInstance[], bill: Bill, due: DateStr, month: MonthKey, shift: number): number {
+function assignIndex(instances: PayInstance[], due: DateStr, shift: number): number {
   let idx = -1
-  if (bill.pinnedPaycheckId) {
-    idx = instances.findIndex((i) => i.month === month && i.paycheck.id === bill.pinnedPaycheckId)
-  }
-  if (idx < 0) {
-    for (let i = 0; i < instances.length; i++) {
-      if (instances[i].date <= due) idx = i
-      else break
-    }
+  for (let i = 0; i < instances.length; i++) {
+    if (instances[i].date <= due) idx = i
+    else break
   }
   if (idx < 0) return -1
   const target = idx + shift
@@ -112,7 +106,7 @@ export function planMonth(state: Pick<AppState, 'paychecks' | 'bills' | 'categor
       const key = occurrenceKey(bill.id, m)
       const due = dateInMonth(m, bill.day)
       const shift = state.shifts[key] ?? 0
-      const idx = assignIndex(instances, bill, due, m, shift)
+      const idx = assignIndex(instances, due, shift)
       if (idx < 0) continue
       const inst = instances[idx]
       const plan = byDate.get(inst.date + inst.paycheck.id)
@@ -150,6 +144,47 @@ export function billsDueBetween(state: Pick<AppState, 'bills' | 'paid'>, from: D
   }
   return out.sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0))
 }
+
+export interface Balances {
+  checking: number
+  savings: number
+  total: number
+}
+
+/**
+ * Running balances from the amounts you entered. Checking gains each payday after the
+ * day it was set and loses expenses and paid bills logged after it was set. Paid savings
+ * items move from Checking to Savings.
+ */
+export function balances(state: Pick<AppState, 'accounts' | 'paychecks' | 'bills' | 'expenses' | 'paid'>, now = Date.now()): Balances {
+  const { checking: ck, savings: sv } = state.accounts
+  const todayStr = toDateStr(new Date(now))
+  const ckDay = toDateStr(new Date(ck.since))
+
+  const pay = payInstances(state.paychecks, ckDay.slice(0, 7), todayStr.slice(0, 7))
+    .filter((p) => p.date > ckDay && p.date <= todayStr)
+    .map((p) => p.paycheck.amount)
+
+  const spent = state.expenses
+    .filter((e) => e.addedAt !== undefined && e.addedAt > ck.since && e.date >= ckDay && e.date <= todayStr)
+    .map((e) => e.amount)
+
+  const billById = new Map(state.bills.map((b) => [b.id, b]))
+  const paidBills: number[] = []
+  const toSavings: number[] = []
+  for (const [key, at] of Object.entries(state.paid)) {
+    const bill = billById.get(key.split('@')[0])
+    if (!bill || typeof at !== 'number') continue
+    if (at > ck.since) paidBills.push(bill.amount)
+    if (bill.type === 'savings' && at > sv.since) toSavings.push(bill.amount)
+  }
+
+  const checking = sum([ck.start, ...pay]) - sum(spent) - sum(paidBills)
+  const savings = sum([sv.start, ...toSavings])
+  return { checking: round2(checking), savings, total: round2(checking + savings) }
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100
 
 export function sum(ns: number[]): number {
   return Math.round(ns.reduce((a, b) => a + b, 0) * 100) / 100

@@ -45,6 +45,19 @@ export function useStore(): AppState {
   return useSyncExternalStore(subscribe, getState)
 }
 
+/** Set an account to the amount you have now; later activity moves it from here. */
+export function setBalance(account: keyof AppState['accounts'], amount: number): void {
+  update((s) => ({ ...s, accounts: { ...s.accounts, [account]: { start: amount, since: Date.now() } } }))
+}
+
+/** Check a bill occurrence off (stamped with when it was paid), or un-check it. */
+export function togglePaid(paid: AppState['paid'], key: string, at = Date.now()): AppState['paid'] {
+  const next = { ...paid }
+  if (next[key]) delete next[key]
+  else next[key] = at
+  return next
+}
+
 /** Toggle a key in one of the `Record<string, true>` maps. */
 export function toggleFlag(map: Record<string, true>, key: string): Record<string, true> {
   const next = { ...map }

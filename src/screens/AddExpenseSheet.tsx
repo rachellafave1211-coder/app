@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { today } from '../lib/dates'
 import { money, round2, uid } from '../lib/format'
 import { update, useStore } from '../lib/store'
-import { Button, Sheet, toast } from '../components/ui'
+import { AmountField, Button, Sheet, toast } from '../components/ui'
 
 export function AddExpenseSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const state = useStore()
@@ -28,7 +28,7 @@ export function AddExpenseSheet({ open, onClose }: { open: boolean; onClose: () 
   function save(e: React.FormEvent) {
     e.preventDefault()
     if (!valid) return
-    update((s) => ({ ...s, expenses: [...s.expenses, { id: uid(), date, note: note.trim(), categoryId, amount: round2(value), source: 'manual' }] }))
+    update((s) => ({ ...s, expenses: [...s.expenses, { id: uid(), date, note: note.trim(), categoryId, amount: round2(value), source: 'manual', addedAt: Date.now() }] }))
     toast(`Added ${money(round2(value))}`)
     onClose()
   }
@@ -36,18 +36,7 @@ export function AddExpenseSheet({ open, onClose }: { open: boolean; onClose: () 
   return (
     <Sheet open={open} onClose={onClose} title="New expense">
       <form onSubmit={save} className="space-y-5">
-        <label className="flex items-baseline justify-center gap-1 rounded-3xl bg-sunken py-6">
-          <span className="num text-4xl text-muted">$</span>
-          <input
-            ref={amountRef}
-            inputMode="decimal"
-            placeholder="0"
-            aria-label="Amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'))}
-            className="num w-48 bg-transparent text-center text-6xl font-semibold outline-none placeholder:text-muted/50"
-          />
-        </label>
+        <AmountField inputRef={amountRef} value={amount} onChange={setAmount} label="Amount" />
 
         <div>
           <p className="mb-2 text-sm font-semibold text-muted">Category</p>

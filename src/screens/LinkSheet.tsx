@@ -5,7 +5,7 @@ import { ordinal } from '../lib/dates'
 import { update } from '../lib/store'
 import { Button, Sheet, toast } from '../components/ui'
 
-const TITLES = { theme: 'A shared theme', template: 'A shared budget', household: 'You’re invited' }
+const TITLES = { template: 'A shared budget', household: 'You’re invited' }
 
 /** Confirm before applying anything that arrived in a shared link. */
 export function LinkSheet({ payload, onClose }: { payload: LinkPayload | null; onClose: () => void }) {
@@ -14,10 +14,7 @@ export function LinkSheet({ payload, onClose }: { payload: LinkPayload | null; o
 
   function apply() {
     if (!payload) return
-    if (payload.kind === 'theme') {
-      update((s) => ({ ...s, theme: payload.theme }))
-      toast('Theme applied')
-    } else if (payload.kind === 'template') {
+    if (payload.kind === 'template') {
       update((s) => applyTemplate(s, payload))
       toast('Template applied')
     } else {
@@ -37,14 +34,6 @@ export function LinkSheet({ payload, onClose }: { payload: LinkPayload | null; o
 
   return (
     <Sheet open onClose={onClose} title={TITLES[payload.kind]}>
-      {payload.kind === 'theme' && (
-        <div className="flex items-center gap-4">
-          <span className="size-16 rounded-3xl" style={{ background: payload.theme.accent }} />
-          <p className="text-muted">
-            Accent <span className="font-mono text-ink">{payload.theme.accent}</span> · {payload.theme.mode} mode
-          </p>
-        </div>
-      )}
       {payload.kind === 'template' && (
         <div className="space-y-2 text-sm">
           <p className="text-muted">This replaces your paychecks, categories and bills. Expenses and reminders are kept.</p>

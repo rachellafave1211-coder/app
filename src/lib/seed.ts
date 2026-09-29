@@ -25,6 +25,7 @@ export function sampleState(): AppState {
       bill('b-pge', 'PG&E', 28, 100, 'bill'),
       bill('b-savings', 'Savings', 28, 200, 'savings'),
     ],
+    accounts: { checking: { start: 1850, since: Date.now() }, savings: { start: 3200, since: Date.now() } },
     categories: [
       { id: 'c-dining', name: 'Dining out', emoji: '🍜', budget: 200 },
       { id: 'c-gas', name: 'Gas', emoji: '⛽', budget: 100 },
@@ -44,6 +45,7 @@ export function emptyState(): AppState {
     reminders: [],
     theme: { accent: DEFAULT_ACCENT, mode: 'auto' },
     paid: {},
+    accounts: { checking: { start: 0, since: Date.now() }, savings: { start: 0, since: Date.now() } },
     shifts: {},
     household: { name: 'Our place', members: [] },
     settled: {},

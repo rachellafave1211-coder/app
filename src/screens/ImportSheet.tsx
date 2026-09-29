@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { autoCategory, matchBill, type ImportRow } from '../lib/importer'
-import { shortDate } from '../lib/dates'
+import { parseDate, shortDate } from '../lib/dates'
 import { money, uid } from '../lib/format'
 import { update, useStore } from '../lib/store'
 import { Button, Sheet, toast } from '../components/ui'
@@ -43,12 +43,14 @@ export function ImportSheet({ rows, skipped, onClose }: { rows: ImportRow[] | nu
   const billCount = chosen.filter((d) => d.billKey).length
 
   function confirm() {
+    const now = Date.now()
     update((s) => {
       const paid = { ...s.paid }
       const expenses = [...s.expenses]
       for (const d of chosen) {
-        if (d.billKey) paid[d.billKey] = true
-        else expenses.push({ id: uid(), date: d.date, note: d.name, categoryId: d.categoryId, amount: d.amount, source: 'import' })
+        // Stamp bill payments with the transaction's day so older payments don't move today's balance.
+        if (d.billKey) paid[d.billKey] = Math.min(now, parseDate(d.date).getTime() + 86_399_999)
+        else expenses.push({ id: uid(), date: d.date, note: d.name, categoryId: d.categoryId, amount: d.amount, source: 'import', addedAt: now })
       }
       return { ...s, paid, expenses }
     })
