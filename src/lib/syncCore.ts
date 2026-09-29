@@ -1,3 +1,4 @@
+import { normalizeState } from './budget'
 import { emptyState } from './seed'
 import type { AppState } from './types'
 
@@ -15,7 +16,7 @@ export function toSynced(s: AppState): SyncedData {
 
 /** Remote budget applied on top of this device's own settings. */
 export function fromSynced(local: AppState, remote: Partial<SyncedData>): AppState {
-  return { ...emptyState(), ...remote, notified: local.notified, notificationsOn: local.notificationsOn }
+  return normalizeState({ ...emptyState(), ...remote, notified: local.notified, notificationsOn: local.notificationsOn })
 }
 
 /** JSON with sorted keys; Postgres jsonb doesn't keep key order, so plain JSON.stringify can't compare. */

@@ -86,6 +86,6 @@ export function applyTemplate(state: AppState, t: Extract<LinkPayload, { kind: '
     categories: t.categories.map((c) => ({ ...c, id: uid() })),
     bills: t.bills.map((b) => ({ ...b, id: uid() })),
     paid: {},
-    shifts: {},
+    assign: {},
   }
 }

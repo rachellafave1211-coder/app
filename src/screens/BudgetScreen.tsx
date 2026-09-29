@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
-import { categoryById, planMonth, type PaycheckPlan } from '../lib/budget'
+import { assignBill, assignExpense, categoryById, paycheckLabel, payKey, placeExpense, planMonth, type MonthPlan, type PaycheckPlan, type PayInstance, type Placement } from '../lib/budget'
 import { addMonths, monthShort, shortDate, thisMonth, weekdayDate } from '../lib/dates'
 import { money, moneyWhole, pct } from '../lib/format'
 import { togglePaid, update, useStore } from '../lib/store'
 import type { AppState, BillType } from '../lib/types'
-import { IconNext, IconShare, IconTrash } from '../components/icons'
-import { Bar, Button, CheckCircle, MonthSwitcher, Pill, Ring, SectionTitle } from '../components/ui'
+import { IconShare, IconTrash } from '../components/icons'
+import { Bar, Button, CheckCircle, MonthSwitcher, Pill, Ring, SectionTitle, Sheet, toast } from '../components/ui'
 import { WrappedSheet } from './WrappedSheet'
 import { SplitsCard } from './SplitsCard'
 import { BalancesCard } from './BalancesCard'
@@ -22,6 +22,7 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: () => void }) {
   const used = available > 0 ? plan.spent / available : plan.spent > 0 ? 1 : 0
   const monthExpenses = state.expenses.filter((e) => e.date.startsWith(month)).sort((a, b) => (a.date < b.date ? 1 : -1))
   const [showAll, setShowAll] = useState(false)
+  const [moving, setMoving] = useState<MoveTarget | null>(null)
 
   return (
     <div>
@@ -72,7 +73,7 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: () => void }) {
           <SectionTitle>Paychecks</SectionTitle>
           <div className="space-y-4">
             {plan.plans.map((p, i) => (
-              <PaycheckCard key={p.pay.date + p.pay.paycheck.id} plan={p} state={state} index={i} />
+              <PaycheckCard key={payKey(p.pay)} plan={p} state={state} index={i} onAssign={setMoving} />
             ))}
           </div>
         </>
@@ -95,19 +96,29 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: () => void }) {
         {monthExpenses.length === 0 && <p className="py-5 text-center text-sm text-muted">Nothing spent yet this month. Tap + to log an expense.</p>}
         {(showAll ? monthExpenses : monthExpenses.slice(0, 6)).map((e) => {
           const cat = categoryById(state.categories, e.categoryId)
+          const where = placeExpense(state.paychecks, e)
+          const name = e.note || cat?.name || 'Expense'
           return (
             <div key={e.id} className="flex items-center gap-3 py-3">
               <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent-soft text-lg" aria-hidden="true">
                 {cat?.emoji ?? '•'}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{e.note || cat?.name || 'Expense'}</p>
+                <p className="truncate font-semibold">{name}</p>
                 <p className="text-xs text-muted">
                   {shortDate(e.date)} · {cat?.name ?? 'Uncategorized'}
-                  {e.source === 'import' && ' · imported'}
+                  {where && ` · ${paycheckLabel(state.paychecks, where.current, false)}`}
                 </p>
+                {where?.moved && (
+                  <MovedTag
+                    name={name}
+                    from={where.original && paycheckLabel(state.paychecks, where.original, where.original.month !== where.current.month)}
+                    onBack={where.original ? () => moveItem({ kind: 'expense', id: e.id, name, where }, where.original!) : undefined}
+                  />
+                )}
               </div>
               <p className="num text-lg font-semibold">{money(e.amount)}</p>
+              {where && <AssignButton name={name} onClick={() => setMoving({ kind: 'expense', id: e.id, name, where })} />}
               <button
                 className="press grid size-9 place-items-center rounded-full text-muted hover:bg-sunken hover:text-danger"
                 aria-label={`Delete ${e.note || 'expense'}`}
@@ -126,6 +137,7 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: () => void }) {
       <p className="mt-2 text-center text-xs text-muted">Recaps only show percentages — never your dollar amounts.</p>
 
       <WrappedSheet open={wrapped} onClose={() => setWrapped(false)} plan={plan} />
+      <PaycheckPicker target={moving} plan={plan} onClose={() => setMoving(null)} />
     </div>
   )
 }
@@ -139,7 +151,87 @@ function Stat({ label, value }: { label: string; value: string }) {
   )
 }
 
-function PaycheckCard({ plan, state, index }: { plan: PaycheckPlan; state: AppState; index: number }) {
+/** A bill occurrence or expense being assigned to a paycheck. */
+type MoveTarget = { kind: 'bill'; key: string; name: string; where: Placement } | { kind: 'expense'; id: string; name: string; where: Placement }
+
+function moveItem(target: MoveTarget, to: PayInstance) {
+  const { original } = target.where
+  update((s) => (target.kind === 'bill' ? assignBill(s, target.key, to, original) : assignExpense(s, target.id, to, original)))
+}
+
+function AssignButton({ name, onClick }: { name: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="press shrink-0 rounded-full bg-sunken px-3 py-1.5 text-xs font-semibold text-ink hover:bg-accent-soft" aria-label={`Assign ${name} to a paycheck`}>
+      Assign
+    </button>
+  )
+}
+
+function MovedTag({ name, from, onBack }: { name: string; from: string | null; onBack?: () => void }) {
+  return (
+    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent-text">{from ? `Moved from ${from}` : 'Moved'}</span>
+      {onBack && (
+        <button onClick={onBack} className="text-[11px] font-semibold text-accent-text underline underline-offset-2" aria-label={`Move ${name} back to ${from}`}>
+          Move back
+        </button>
+      )}
+    </p>
+  )
+}
+
+/** Lists the month's paychecks (plus wherever the item is now and started) to assign it to one. */
+function PaycheckPicker({ target, plan, onClose }: { target: MoveTarget | null; plan: MonthPlan; onClose: () => void }) {
+  const { paychecks } = useStore()
+  if (!target) return null
+  const { current, original } = target.where
+  const byKey = new Map<string, PayInstance>()
+  for (const p of plan.plans) byKey.set(payKey(p.pay), p.pay)
+  byKey.set(payKey(current), current)
+  if (original) byKey.set(payKey(original), original)
+  const options = [...byKey.values()].sort((a, b) => (a.date < b.date ? -1 : 1))
+  const planFor = new Map(plan.plans.map((p) => [payKey(p.pay), p]))
+
+  return (
+    <Sheet open onClose={onClose} title={`Assign ${target.name}`}>
+      <p className="mb-3 text-sm text-muted">Choose the paycheck this {target.kind} comes out of.</p>
+      <div className="grid gap-2" role="radiogroup" aria-label={`Paycheck for ${target.name}`}>
+        {options.map((pay) => {
+          const isCurrent = payKey(pay) === payKey(current)
+          const isOriginal = !!original && payKey(pay) === payKey(original)
+          const p = planFor.get(payKey(pay))
+          return (
+            <button
+              key={payKey(pay)}
+              role="radio"
+              aria-checked={isCurrent}
+              onClick={() => {
+                if (!isCurrent) {
+                  moveItem(target, pay)
+                  toast(isOriginal ? `Moved ${target.name} back` : `Moved ${target.name} to ${paycheckLabel(paychecks, pay, false)}`)
+                }
+                onClose()
+              }}
+              className={`press flex items-center justify-between gap-3 rounded-2xl border-2 p-4 text-left ${isCurrent ? 'border-accent bg-accent-soft' : 'border-line hover:border-accent'}`}
+            >
+              <span>
+                <span className="block font-semibold">{paycheckLabel(paychecks, pay)}</span>
+                <span className="block text-xs text-muted">
+                  {money(pay.paycheck.amount)}
+                  {p && ` · ${p.left < 0 ? `short ${money(-p.left)}` : `${money(p.left)} free`}`}
+                  {isOriginal && ' · original'}
+                </span>
+              </span>
+              {isCurrent && <Pill tone="accent">Current</Pill>}
+            </button>
+          )
+        })}
+      </div>
+    </Sheet>
+  )
+}
+
+function PaycheckCard({ plan, state, index, onAssign }: { plan: PaycheckPlan; state: AppState; index: number; onAssign: (t: MoveTarget) => void }) {
   const { pay } = plan
   const short = plan.left < 0
   const paidCount = plan.bills.filter((b) => b.paid).length
@@ -147,7 +239,9 @@ function PaycheckCard({ plan, state, index }: { plan: PaycheckPlan; state: AppSt
     <article className="card anim-pop p-5" style={{ animationDelay: `${index * 40}ms` }}>
       <header className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-muted">Paycheck · {weekdayDate(pay.date)}</p>
+          <p className="text-sm font-medium text-muted">
+            {paycheckLabel(state.paychecks, pay, false)} · {weekdayDate(pay.date)}
+          </p>
           <p className="num text-4xl font-semibold">{money(pay.paycheck.amount)}</p>
         </div>
         <Pill tone={short ? 'danger' : 'good'}>{short ? `Short ${money(-plan.left)}` : `${money(plan.left)} free`}</Pill>
@@ -205,31 +299,17 @@ function PaycheckCard({ plan, state, index }: { plan: PaycheckPlan; state: AppSt
                 </p>
                 <p className="text-xs text-muted">
                   due {shortDate(b.due)} · {TYPE_LABEL[b.bill.type]}
-                  {b.shift > 0 && (
-                    <button
-                      className="ml-1.5 font-semibold text-accent-text underline-offset-2 hover:underline"
-                      onClick={() =>
-                        update((s) => {
-                          const shifts = { ...s.shifts }
-                          delete shifts[b.key]
-                          return { ...s, shifts }
-                        })
-                      }
-                    >
-                      moved · undo
-                    </button>
-                  )}
                 </p>
+                {b.moved && (
+                  <MovedTag
+                    name={b.bill.name}
+                    from={b.original && paycheckLabel(state.paychecks, b.original, b.original.month !== pay.month)}
+                    onBack={b.original ? () => moveItem({ kind: 'bill', key: b.key, name: b.bill.name, where: b }, b.original!) : undefined}
+                  />
+                )}
               </div>
               <span className="num font-semibold">{money(b.bill.amount)}</span>
-              <button
-                className="press grid size-8 place-items-center rounded-full text-muted hover:bg-sunken hover:text-accent-text"
-                aria-label={`Move ${b.bill.name} to next paycheck`}
-                title="Move to next paycheck"
-                onClick={() => update((s) => ({ ...s, shifts: { ...s.shifts, [b.key]: (s.shifts[b.key] ?? 0) + 1 } }))}
-              >
-                <IconNext size={17} />
-              </button>
+              <AssignButton name={b.bill.name} onClick={() => onAssign({ kind: 'bill', key: b.key, name: b.bill.name, where: b })} />
             </li>
           ))}
         </ul>

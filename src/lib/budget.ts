@@ -1,4 +1,4 @@
-import { addMonths, dateInMonth, toDateStr } from './dates'
+import { addMonths, dateInMonth, shortDate, toDateStr } from './dates'
 import type { AppState, Bill, Category, DateStr, Expense, MonthKey, Paycheck } from './types'
 
 /** One paycheck landing on a specific date. */
@@ -17,12 +17,21 @@ export interface BillOccurrence {
   /** `billId@YYYY-MM` — the due month identifies the occurrence. */
   key: string
   paid: boolean
-  shift: number
 }
+
+/** Where a bill occurrence or an expense sits: the paycheck it counts toward, and the one its date gave it. */
+export interface Placement {
+  current: PayInstance
+  /** The paycheck it was automatically assigned to by its date; null if no payday came before it. */
+  original: PayInstance | null
+  moved: boolean
+}
+
+export type PlannedBill = BillOccurrence & Placement
 
 export interface PaycheckPlan {
   pay: PayInstance
-  bills: BillOccurrence[]
+  bills: PlannedBill[]
   billsTotal: number
   categoryTotal: number
   /** Paycheck − bills − category budgets. Negative means short. */
@@ -44,8 +53,17 @@ export interface MonthPlan {
 
 export const occurrenceKey = (billId: string, month: MonthKey) => `${billId}@${month}`
 
+/** Identifies one paycheck in one month, e.g. `p2@2026-10`. Stored when an item is assigned to it. */
+export const payKey = (pay: Pick<PayInstance, 'paycheck' | 'month'>) => `${pay.paycheck.id}@${pay.month}`
+
 export function sortedPaychecks(paychecks: Paycheck[]): Paycheck[] {
   return [...paychecks].sort((a, b) => a.day - b.day || a.id.localeCompare(b.id))
+}
+
+/** "Paycheck 2 · Oct 10" (or just "Paycheck 2"): numbered by pay day within the month. */
+export function paycheckLabel(paychecks: Paycheck[], pay: PayInstance, withDate = true): string {
+  const n = sortedPaychecks(paychecks).findIndex((p) => p.id === pay.paycheck.id) + 1
+  return withDate ? `Paycheck ${n} · ${shortDate(pay.date)}` : `Paycheck ${n}`
 }
 
 /** Paydays from `from` through `to` (inclusive months), in date order, each with its window end. */
@@ -63,27 +81,43 @@ export function payInstances(paychecks: Paycheck[], from: MonthKey, to: MonthKey
     .filter((inst) => inst.month <= to)
 }
 
-/**
- * Which pay instance covers a bill occurrence: the last payday on or before the due date.
- * A shift then moves it N paychecks later.
- */
-function assignIndex(instances: PayInstance[], due: DateStr, shift: number): number {
+/** The last payday on or before `date`: the paycheck an item belongs to by its date. */
+function autoIndex(instances: PayInstance[], date: DateStr): number {
   let idx = -1
   for (let i = 0; i < instances.length; i++) {
-    if (instances[i].date <= due) idx = i
+    if (instances[i].date <= date) idx = i
     else break
   }
-  if (idx < 0) return -1
-  const target = idx + shift
-  return target < instances.length ? target : -1
+  return idx
+}
+
+/**
+ * Where an item with this date counts. An assignment wins when its paycheck still exists;
+ * otherwise the item falls back to its automatic paycheck, so it is never dropped.
+ */
+function place(instances: PayInstance[], date: DateStr, assigned: string | undefined): Placement | null {
+  const auto = autoIndex(instances, date)
+  const chosen = assigned ? instances.findIndex((i) => payKey(i) === assigned) : -1
+  const idx = chosen >= 0 ? chosen : auto
+  if (idx < 0) return null
+  const original = auto >= 0 ? instances[auto] : null
+  return { current: instances[idx], original, moved: !original || idx !== auto }
+}
+
+/** Where an expense counts, and where its date put it. */
+export function placeExpense(paychecks: Paycheck[], e: Expense): Placement | null {
+  const m = e.date.slice(0, 7)
+  return place(payInstances(paychecks, addMonths(m, -2), addMonths(m, 2)), e.date, e.paycheck)
 }
 
 export function inWindow(date: DateStr, pay: PayInstance): boolean {
   return date >= pay.date && date < pay.end
 }
 
-export function planMonth(state: Pick<AppState, 'paychecks' | 'bills' | 'categories' | 'expenses' | 'paid' | 'shifts'>, month: MonthKey): MonthPlan {
-  // Look a few months around so early/late bills and shifts land correctly.
+type PlanInput = Pick<AppState, 'paychecks' | 'bills' | 'categories' | 'expenses' | 'paid' | 'assign'>
+
+export function planMonth(state: PlanInput, month: MonthKey): MonthPlan {
+  // Look a few months around: bills due early next month, and items assigned across a month boundary.
   const instances = payInstances(state.paychecks, addMonths(month, -3), addMonths(month, 3))
   const categoryTotal = sum(state.categories.map((c) => c.budget))
 
@@ -99,26 +133,31 @@ export function planMonth(state: Pick<AppState, 'paychecks' | 'bills' | 'categor
       spent: 0,
       spentByCategory: {},
     }))
-  const byDate = new Map(plans.map((p) => [p.pay.date + p.pay.paycheck.id, p]))
+  const byKey = new Map(plans.map((p) => [payKey(p.pay), p]))
 
   for (const bill of state.bills) {
     for (let m = addMonths(month, -2); m <= addMonths(month, 2); m = addMonths(m, 1)) {
       const key = occurrenceKey(bill.id, m)
       const due = dateInMonth(m, bill.day)
-      const shift = state.shifts[key] ?? 0
-      const idx = assignIndex(instances, due, shift)
-      if (idx < 0) continue
-      const inst = instances[idx]
-      const plan = byDate.get(inst.date + inst.paycheck.id)
-      if (plan) plan.bills.push({ bill, due, key, paid: !!state.paid[key], shift })
+      const where = place(instances, due, state.assign[key])
+      const plan = where && byKey.get(payKey(where.current))
+      if (plan) plan.bills.push({ bill, due, key, paid: !!state.paid[key], ...where! })
     }
+  }
+
+  const from = dateInMonth(addMonths(month, -2), 1)
+  const to = dateInMonth(addMonths(month, 2), 31)
+  for (const e of state.expenses) {
+    if (e.date < from || e.date > to) continue
+    const where = place(instances, e.date, e.paycheck)
+    const plan = where && byKey.get(payKey(where.current))
+    if (plan) plan.expenses.push(e)
   }
 
   for (const plan of plans) {
     plan.bills.sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : a.bill.name.localeCompare(b.bill.name)))
     plan.billsTotal = sum(plan.bills.map((b) => b.bill.amount))
     plan.left = plan.pay.paycheck.amount - plan.billsTotal - plan.categoryTotal
-    plan.expenses = state.expenses.filter((e) => inWindow(e.date, plan.pay))
     plan.spent = sum(plan.expenses.map((e) => e.amount))
     for (const e of plan.expenses) {
       plan.spentByCategory[e.categoryId] = (plan.spentByCategory[e.categoryId] ?? 0) + e.amount
@@ -131,6 +170,50 @@ export function planMonth(state: Pick<AppState, 'paychecks' | 'bills' | 'categor
   return { month, plans, income, billsTotal, spent, leftToSpend: income - billsTotal - spent }
 }
 
+/** Assign a bill occurrence to a paycheck. Choosing its automatic paycheck clears the assignment. */
+export function assignBill(state: AppState, key: string, to: PayInstance, original: PayInstance | null): AppState {
+  const assign = { ...state.assign }
+  if (original && payKey(original) === payKey(to)) delete assign[key]
+  else assign[key] = payKey(to)
+  return { ...state, assign }
+}
+
+/** Assign an expense to a paycheck. Choosing its automatic paycheck clears the assignment. */
+export function assignExpense(state: AppState, id: string, to: PayInstance, original: PayInstance | null): AppState {
+  const back = original && payKey(original) === payKey(to)
+  return {
+    ...state,
+    expenses: state.expenses.map((e) => {
+      if (e.id !== id) return e
+      const next = { ...e }
+      if (back) delete next.paycheck
+      else next.paycheck = payKey(to)
+      return next
+    }),
+  }
+}
+
+/**
+ * Bring older saved data up to date. Earlier versions moved bills with "N paychecks later"
+ * shifts; each becomes an assignment to the paycheck it had landed on.
+ */
+export function normalizeState(state: AppState): AppState {
+  const { shifts, ...rest } = state as AppState & { shifts?: Record<string, number> }
+  if (!shifts) return state
+  const assign = { ...(rest.assign ?? {}) }
+  const bills = new Map(rest.bills.map((b) => [b.id, b]))
+  for (const [key, n] of Object.entries(shifts)) {
+    const [billId, month] = key.split('@')
+    const bill = bills.get(billId)
+    if (!bill || !month || !n || assign[key]) continue
+    const instances = payInstances(rest.paychecks, addMonths(month, -2), addMonths(month, 3))
+    const auto = autoIndex(instances, dateInMonth(month, bill.day))
+    const target = instances[auto + n]
+    if (auto >= 0 && target) assign[key] = payKey(target)
+  }
+  return { ...rest, assign }
+}
+
 /** Every bill occurrence due between two dates (inclusive), in due order. */
 export function billsDueBetween(state: Pick<AppState, 'bills' | 'paid'>, from: DateStr, to: DateStr): BillOccurrence[] {
   const out: BillOccurrence[] = []
@@ -139,7 +222,7 @@ export function billsDueBetween(state: Pick<AppState, 'bills' | 'paid'>, from: D
       const due = dateInMonth(m, bill.day)
       if (due < from || due > to) continue
       const key = occurrenceKey(bill.id, m)
-      out.push({ bill, due, key, paid: !!state.paid[key], shift: 0 })
+      out.push({ bill, due, key, paid: !!state.paid[key] })
     }
   }
   return out.sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0))

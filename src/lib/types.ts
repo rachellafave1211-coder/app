@@ -39,6 +39,15 @@ export interface Expense {
   source?: 'manual' | 'import' | 'bank'
   /** When it was logged (ms). Balances only count expenses logged after the balance was set. */
   addedAt?: number
+  /** Paycheck it was moved to (`paycheckId@YYYY-MM`). Unset means the paycheck its date falls in. */
+  paycheck?: string
+}
+
+export interface Task {
+  id: Id
+  title: string
+  due?: DateStr
+  done: boolean
 }
 
 export interface Reminder {
@@ -81,8 +90,9 @@ export interface AppState {
   theme: Theme
   /** Paid bill occurrences, keyed by `billId@YYYY-MM` (the due month), with when they were paid (ms). */
   paid: Record<string, number | true>
-  /** Bill occurrences moved N paychecks later, keyed like `paid`. */
-  shifts: Record<string, number>
+  /** Bill occurrences moved to another paycheck: occurrence key → `paycheckId@YYYY-MM`. */
+  assign: Record<string, string>
+  tasks: Task[]
   household: Household
   /** Split repayments received, keyed by `billId@YYYY-MM@memberId`. */
   settled: Record<string, true>
