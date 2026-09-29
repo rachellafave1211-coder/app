@@ -27,16 +27,19 @@ After that, every push to the production branch redeploys, and every other branc
 
 Payday works without an account. To keep a budget and its balances the same on several devices, connect a free Supabase project:
 
-1. Create a project at https://supabase.com/dashboard.
-2. Open **SQL Editor**, paste the contents of `supabase/migrations/0001_budgets.sql`, and click **Run**. This creates the `budgets` table, locks each budget to its owner, and turns on live updates.
-3. Optional, but recommended for phones: add the sign-in code to the email (see the iPhone note below).
-4. Under **Authentication → URL Configuration**, set **Site URL** to your site (for example `https://app-bay-rho-90.vercel.app`). Also add `http://localhost:5173` under **Redirect URLs** if you run it locally.
-5. Under **Project Settings → API**, copy the **Project URL** and the **anon public** key.
-6. Add them as environment variables:
-   - On Vercel: Project → Settings → Environment Variables. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, then redeploy.
-   - Locally: copy `.env.example` to `.env` and fill it in.
+1. Create a project at https://supabase.com/dashboard. You'll be asked to create an organization first; a personal one on the Free plan is fine.
+2. Open **SQL Editor**, paste the contents of `supabase/migrations/0001_budgets.sql`, and click **Run**. Supabase warns that the query is "destructive" because of its `drop … if exists` lines. That's expected: they only replace Payday's own policies and trigger so the script can be run again. You should see "Success. No rows returned."
+3. Under **Authentication → URL Configuration**, set **Site URL** to your site, for example `https://app-bay-rho-90.vercel.app`.
+4. Copy two values from **Project Settings**:
+   - **Project URL**, under **Data API** (or the **Connect** button). Use just `https://<your-project>.supabase.co`, with nothing after it.
+   - **Publishable key** (starts with `sb_publishable_`), under **API Keys**. The legacy **anon public** key works too. Never use a **secret** or **service_role** key.
+5. Add them as environment variables:
+   - On Vercel, go to Project → Settings → Environment Variables → **Add Environment Variable**. Choose type **Config** (the values are public by design), and add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Then redeploy: Vite reads them at build time.
+   - Locally, copy `.env.example` to `.env` and fill it in.
 
-The anon key is meant to be public. Row-level security in the SQL above keeps each person's budget private.
+Row-level security in the SQL above keeps each person's budget private, so it's safe for these values to be public.
+
+If a value is wrong, the app still loads, and Settings → Sync across devices says which setting to fix.
 
 How it works:
 - People sign in from Settings → Sync across devices with an emailed link. There's no password.
@@ -45,9 +48,12 @@ How it works:
 - If a device and the account both changed, Payday shows both versions and asks which to keep, instead of overwriting one. It also asks the first time a device signs in and its budget differs from the account's.
 - Signing out keeps the budget on that device.
 
-Supabase free-tier projects pause after a week without activity. Unpause the project from the dashboard if sync stops working.
+Limits of Supabase's built-in email sender (connect your own SMTP service under Authentication settings to remove them):
+- It only sends to members of your Supabase organization, so sign in with the email you signed up to Supabase with.
+- It sends only a few emails per hour.
+- Email templates can't be edited. So sign-in is link-only, and an iPhone home-screen install can't sign in, because the link opens in Safari instead of the installed app. Use Payday in Safari, or add custom SMTP and put `{{ .Token }}` in the **Confirm signup** and **Magic Link** templates so people can type the 6-digit code in Settings.
 
-On an iPhone home-screen install, the email link opens in Safari, which doesn't sign in the installed app. To make sign-in work there, add the code to the email: in Supabase, go to **Authentication → Emails → Magic Link** and add a line such as `Or enter this code: {{ .Token }}` to the template. People then type the code in Settings.
+Supabase free-tier projects pause after a week without activity. Unpause the project from the dashboard if sync stops working.
 
 ## What's in it
 
