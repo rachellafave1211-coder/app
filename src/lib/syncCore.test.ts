@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { sampleState } from './seed'
-import { fromSynced, plan, stableStringify, syncedKey, toSynced } from './syncCore'
+import { fromSynced, parseSignInLink, plan, stableStringify, syncedKey, toSynced } from './syncCore'
 
 describe('sync data', () => {
   it('leaves device-only settings out of what syncs', () => {
@@ -47,5 +47,21 @@ describe('plan', () => {
   })
   it('asks when both changed', () => {
     expect(plan({ ...base, dirty: true, remote: { data: other, updated_at: 't2' } })).toBe('conflict')
+  })
+})
+
+describe('parseSignInLink', () => {
+  it('reads the one-time code from a Supabase email link', () => {
+    const link = 'https://abcd.supabase.co/auth/v1/verify?token=0a1b2c3d4e&type=magiclink&redirect_to=https://app-bay-rho-90.vercel.app'
+    expect(parseSignInLink(link)).toEqual({ kind: 'otp', token: '0a1b2c3d4e', types: ['magiclink', 'email'] })
+    expect(parseSignInLink(' https://abcd.supabase.co/auth/v1/verify?token=x&type=signup ')).toEqual({ kind: 'otp', token: 'x', types: ['signup', 'email'] })
+    expect(parseSignInLink('https://site.app/?token_hash=h&type=email')).toEqual({ kind: 'otp', token: 'h', types: ['email'] })
+  })
+  it('reads a finished session from a redirected link', () => {
+    expect(parseSignInLink('https://site.app/#access_token=a&refresh_token=r&type=magiclink')).toEqual({ kind: 'session', access: 'a', refresh: 'r' })
+  })
+  it('explains what went wrong', () => {
+    expect('error' in parseSignInLink('hello')).toBe(true)
+    expect('error' in parseSignInLink('https://site.app/')).toBe(true)
   })
 })

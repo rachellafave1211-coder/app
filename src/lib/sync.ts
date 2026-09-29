@@ -1,24 +1,24 @@
 import { createClient, type RealtimeChannel, type Session, type SupabaseClient } from '@supabase/supabase-js'
 import { useSyncExternalStore } from 'react'
 import { getState, replaceState, subscribeStore } from './store'
-import { fromSynced, plan, stableStringify, syncedKey, toSynced, type SyncedData } from './syncCore'
+import { fromSynced, parseSignInLink, plan, stableStringify, syncedKey, toSynced, type SyncedData } from './syncCore'
 
 const RAW_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim()
 // Supabase sometimes shows the address with a path such as /rest/v1/; the client needs just the origin.
-const URL = RAW_URL?.replace(/^(https:\/\/[^/\s]+).*$/, '$1')
+const PROJECT_URL = RAW_URL?.replace(/^(https:\/\/[^/\s]+).*$/, '$1')
 const KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim()
 
 /** Why the site's Supabase settings can't be used, if they're present but wrong. */
 export let syncSetupProblem: string | null = null
 
 function makeClient(): SupabaseClient | null {
-  if (!URL || !KEY) return null
-  if (!/^https:\/\/[^\s/]+/.test(URL)) {
-    syncSetupProblem = `VITE_SUPABASE_URL should start with https:// (it's currently “${URL.slice(0, 40)}”).`
+  if (!PROJECT_URL || !KEY) return null
+  if (!/^https:\/\/[^\s/]+/.test(PROJECT_URL)) {
+    syncSetupProblem = `VITE_SUPABASE_URL should start with https:// (it's currently “${PROJECT_URL.slice(0, 40)}”).`
     return null
   }
   try {
-    return createClient(URL, KEY)
+    return createClient(PROJECT_URL, KEY)
   } catch (e) {
     // A bad setting must never stop the app from loading.
     syncSetupProblem = (e as Error).message
@@ -248,6 +248,34 @@ export async function verifyCode(email: string, code: string): Promise<string | 
   if (!supabase) return 'Sync isn’t set up for this site.'
   const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' })
   return error ? error.message : null
+}
+
+/**
+ * Sign in with a sign-in link copied from the email. An app added to an iPhone or iPad home
+ * screen keeps its own storage, and tapping the link opens Safari instead, so the link's
+ * one-time code is read here and exchanged for a session.
+ */
+export async function signInWithLink(raw: string): Promise<string | null> {
+  if (!supabase) return 'Sync isn’t set up for this site.'
+  const parsed = parseSignInLink(raw)
+  if ('error' in parsed) return parsed.error
+  if (parsed.kind === 'session') {
+    const { error } = await supabase.auth.setSession({ access_token: parsed.access, refresh_token: parsed.refresh })
+    return error ? error.message : null
+  }
+  const { token, types } = parsed
+  let message = ''
+  for (const t of types) {
+    const { error } = await supabase.auth.verifyOtp({ token_hash: token, type: t })
+    if (!error) return null
+    message = error.message
+  }
+  return `${message}. Each sign-in link works once and expires after about an hour. If you already tapped it, send yourself a new one.`
+}
+
+/** Running as an app added to the home screen, rather than in a browser tab. */
+export function isInstalledApp(): boolean {
+  return matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
 }
 
 export async function signOut() {
