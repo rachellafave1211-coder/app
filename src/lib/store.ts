@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { normalizeState } from './budget'
-import { emptyState, sampleState } from './seed'
+import { emptyState } from './seed'
 import type { AppState } from './types'
 
 const KEY = 'payday:v1'
@@ -12,7 +12,8 @@ function load(): AppState {
   } catch {
     // Fall through to the sample budget.
   }
-  return sampleState()
+  // A device that has never used Payday starts with an empty budget; the sample is one tap away.
+  return emptyState()
 }
 
 let state: AppState = load()
