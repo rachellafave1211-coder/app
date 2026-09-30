@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { readLink, type LinkPayload } from './lib/links'
 import { checkAndNotify } from './lib/notify'
 import { startSync } from './lib/sync'
+import { resumeBankSignIn } from './lib/bank'
 import { useStore } from './lib/store'
 import { applyTheme } from './lib/theme'
 import { IconBell, IconCalendar, IconPlus, IconSettings, IconWallet } from './components/icons'
-import { Toaster } from './components/ui'
+import { Toaster, toast } from './components/ui'
 import { AddExpenseSheet } from './screens/AddExpenseSheet'
 import { BudgetScreen } from './screens/BudgetScreen'
 import { CalendarScreen } from './screens/CalendarScreen'
@@ -45,6 +46,18 @@ export default function App() {
   }, [])
 
   useEffect(() => startSync(), [])
+
+  // Finish connecting a bank that signed in on its own website and sent the person back here.
+  useEffect(() => {
+    resumeBankSignIn().then(
+      (item) => {
+        if (!item) return
+        toast(`Connected ${item.institution_name}`)
+        go('settings')
+      },
+      (e: Error) => toast(e.message),
+    )
+  }, [])
 
   // Local bill and reminder alerts.
   useEffect(() => {
