@@ -12,7 +12,7 @@ import { CalendarScreen } from './screens/CalendarScreen'
 import { LinkSheet } from './screens/LinkSheet'
 import { ConflictSheet } from './screens/SyncSection'
 import { RemindersScreen } from './screens/RemindersScreen'
-import { SettingsScreen } from './screens/SettingsScreen'
+import { SettingsScreen, type SettingsSection } from './screens/SettingsScreen'
 
 type Tab = 'budget' | 'calendar' | 'reminders' | 'settings'
 
@@ -58,7 +58,9 @@ export default function App() {
     }
   }, [])
 
-  const go = (t: Tab) => {
+  const [settingsFocus, setSettingsFocus] = useState<SettingsSection | null>(null)
+  const go = (t: Tab, section: SettingsSection | null = null) => {
+    setSettingsFocus(section)
     setTab(t)
     scrollTo({ top: 0 })
   }
@@ -66,10 +68,10 @@ export default function App() {
   return (
     <div className="min-h-dvh">
       <main className="pt-safe mx-auto max-w-md px-4 pb-32">
-        {tab === 'budget' && <BudgetScreen onGoSettings={() => go('settings')} />}
+        {tab === 'budget' && <BudgetScreen onGoSettings={(section) => go('settings', section)} />}
         {tab === 'calendar' && <CalendarScreen />}
         {tab === 'reminders' && <RemindersScreen />}
-        {tab === 'settings' && <SettingsScreen />}
+        {tab === 'settings' && <SettingsScreen focus={settingsFocus} />}
       </main>
 
       <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-line bg-card/85 backdrop-blur-xl" aria-label="Main">

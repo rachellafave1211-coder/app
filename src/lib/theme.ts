@@ -2,6 +2,7 @@ import type { Theme } from './types'
 
 export const PRESETS: { name: string; color: string }[] = [
   { name: 'Berry', color: '#d6457a' },
+  { name: 'Evergreen', color: '#1c4a44' },
   { name: 'Ocean', color: '#2f6fdb' },
   { name: 'Sage', color: '#3f8a63' },
   { name: 'Tangerine', color: '#e0662a' },

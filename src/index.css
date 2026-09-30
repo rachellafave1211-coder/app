@@ -32,7 +32,7 @@
   --warn: #f0b949;
   --info: #7aa7ff;
   --accent-soft: color-mix(in oklab, var(--accent) 22%, var(--card));
-  --accent-text: color-mix(in oklab, var(--accent) 65%, white);
+  --accent-text: color-mix(in oklab, var(--accent) 50%, white);
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 30px -14px rgb(0 0 0 / 0.6);
   color-scheme: dark;
 }

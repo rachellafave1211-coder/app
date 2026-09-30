@@ -3,16 +3,18 @@ import { assignBill, assignExpense, categoryById, paycheckLabel, payKey, placeEx
 import { billTypeLabel } from '../lib/billTypes'
 import { addMonths, monthShort, shortDate, thisMonth, weekdayDate } from '../lib/dates'
 import { money, moneyWhole, pct } from '../lib/format'
-import { togglePaid, update, useStore } from '../lib/store'
+import { replaceState, togglePaid, update, useStore } from '../lib/store'
 import type { AppState } from '../lib/types'
 import { IconShare, IconTrash } from '../components/icons'
 import { Bar, Button, CheckCircle, MonthSwitcher, Pill, Ring, SectionTitle, toast } from '../components/ui'
 import { WrappedSheet } from './WrappedSheet'
 import { SplitsCard } from './SplitsCard'
 import { BalancesCard } from './BalancesCard'
+import type { SettingsSection } from './SettingsScreen'
+import { sampleState } from '../lib/seed'
 
 
-export function BudgetScreen({ onGoSettings }: { onGoSettings: () => void }) {
+export function BudgetScreen({ onGoSettings }: { onGoSettings: (section: SettingsSection) => void }) {
   const state = useStore()
   const [month, setMonth] = useState(thisMonth())
   const [wrapped, setWrapped] = useState(false)
@@ -60,15 +62,10 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: () => void }) {
       </section>
 
       {plan.plans.length === 0 ? (
-        <div className="card mt-5 p-6 text-center">
-          <p className="font-serif text-xl font-semibold">Add your paychecks</p>
-          <p className="mt-1 text-sm text-muted">Payday budgets each paycheck and assigns bills to the one that lands before they’re due.</p>
-          <Button className="mt-4" onClick={onGoSettings}>
-            Set up paychecks
-          </Button>
-        </div>
+        <WelcomeCard onGoSettings={onGoSettings} />
       ) : (
         <>
+          <WelcomeCard onGoSettings={onGoSettings} compact />
           <SectionTitle>Paychecks</SectionTitle>
           <div className="space-y-4">
             {plan.plans.map((p, i) => (
@@ -136,6 +133,92 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: () => void }) {
 
       <WrappedSheet open={wrapped} onClose={() => setWrapped(false)} plan={plan} />
     </div>
+  )
+}
+
+const WELCOME_HIDDEN = 'payday:welcome-hidden'
+
+/**
+ * First-run checklist. With no paychecks it is the Budget page's main content; after that a
+ * compact version stays above the paychecks until balances, paychecks and bills are set, or
+ * until it's hidden on this device.
+ */
+function WelcomeCard({ onGoSettings, compact }: { onGoSettings: (section: SettingsSection) => void; compact?: boolean }) {
+  const s = useStore()
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem(WELCOME_HIDDEN) === '1'
+    } catch {
+      return false
+    }
+  })
+  const steps: { done: boolean; title: string; detail: string; section: SettingsSection }[] = [
+    {
+      done: s.accounts.checking.start !== 0 || s.accounts.savings.start !== 0,
+      title: 'Enter your balances',
+      detail: 'What’s in checking and savings right now.',
+      section: 'balances',
+    },
+    { done: s.paychecks.length > 0, title: 'Add your paychecks', detail: 'The day of the month each one lands, and how much.', section: 'paychecks' },
+    { done: s.bills.length > 0, title: 'Add your bills', detail: 'Rent, phone, subscriptions: each with its due day.', section: 'bills' },
+    { done: s.categories.length > 0, title: 'Set spending budgets', detail: 'Optional: groceries, gas, dining out, per paycheck.', section: 'categories' },
+  ]
+  if (compact && (hidden || steps.slice(0, 3).every((x) => x.done))) return null
+  return (
+    <section className="card mt-5 p-5" aria-label="Get started">
+      <div className="flex items-start justify-between gap-3">
+        <p className="font-serif text-2xl font-semibold">{compact ? 'Finish setting up' : 'Welcome to Payday'}</p>
+        {compact && (
+          <button
+            className="press shrink-0 rounded-full px-2 py-1 text-sm font-semibold text-muted hover:bg-sunken"
+            onClick={() => {
+              setHidden(true)
+              try {
+                localStorage.setItem(WELCOME_HIDDEN, '1')
+              } catch {
+                // Hidden for this visit only.
+              }
+            }}
+          >
+            Hide
+          </button>
+        )}
+      </div>
+      {!compact && (
+        <p className="mt-1 text-sm text-muted">Payday gives each paycheck its own budget and puts every bill on the paycheck that lands before it’s due. Set it up in a few steps:</p>
+      )}
+      <ol className="mt-4 space-y-2">
+        {steps.map((step, i) => (
+          <li key={step.section}>
+            <button onClick={() => onGoSettings(step.section)} className="press flex w-full items-center gap-3 rounded-2xl bg-sunken p-3 text-left hover:bg-accent-soft">
+              <span
+                className={`grid size-8 shrink-0 place-items-center rounded-full text-sm font-bold ${step.done ? 'bg-accent text-on-accent' : 'bg-card text-muted'}`}
+                aria-hidden="true"
+              >
+                {step.done ? '✓' : i + 1}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className={`block font-semibold ${step.done ? 'text-muted line-through' : ''}`}>{step.title}</span>
+                <span className="block text-xs text-muted">{step.detail}</span>
+              </span>
+              <span className="sr-only">{step.done ? 'Done' : 'Not done yet'}</span>
+              <span className="text-muted" aria-hidden="true">
+                ›
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+      {!compact && (
+        <div className="mt-4 border-t border-line pt-4 text-center">
+          <p className="text-sm text-muted">Just looking around?</p>
+          <Button variant="ghost" className="mt-2 w-full" onClick={() => replaceState({ ...sampleState(), theme: s.theme })}>
+            Try a sample budget
+          </Button>
+          <p className="mt-2 text-xs text-muted">You can clear it later in Settings → Your data.</p>
+        </div>
+      )}
+    </section>
   )
 }
 

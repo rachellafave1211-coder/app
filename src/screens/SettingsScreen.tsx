@@ -22,9 +22,15 @@ function syncSubtitle(status: SyncStatus, email: string | null) {
   return email ?? 'Signed in'
 }
 
-export function SettingsScreen() {
+/** Settings sections other screens can open directly. */
+export type SettingsSection = 'balances' | 'paychecks' | 'categories' | 'bills'
+
+export function SettingsScreen({ focus = null }: { focus?: SettingsSection | null }) {
   const state = useStore()
   const sync = useSync()
+  useEffect(() => {
+    if (focus) document.getElementById(`settings-${focus}`)?.scrollIntoView({ block: 'start' })
+  }, [focus])
   return (
     <div>
       <header className="px-1 pb-3">
@@ -35,16 +41,16 @@ export function SettingsScreen() {
           <SyncPanel />
         </Section>
         <ThemeSection />
-        <Section title="Account balances" subtitle="Checking and savings">
+        <Section id="settings-balances" open={focus === 'balances'} title="Account balances" subtitle="Checking and savings">
           <AccountsEditor />
         </Section>
-        <Section title="Paychecks" subtitle={`${state.paychecks.length} per month`}>
+        <Section id="settings-paychecks" open={focus === 'paychecks'} title="Paychecks" subtitle={`${state.paychecks.length} per month`}>
           <PaychecksEditor />
         </Section>
-        <Section title="Category budgets" subtitle="Per paycheck">
+        <Section id="settings-categories" open={focus === 'categories'} title="Category budgets" subtitle="Per paycheck">
           <CategoriesEditor />
         </Section>
-        <Section title="Bills" subtitle={`${state.bills.length} recurring monthly`}>
+        <Section id="settings-bills" open={focus === 'bills'} title="Bills" subtitle={`${state.bills.length} recurring monthly`}>
           <BillsEditor />
         </Section>
         <Section title="Shared budget" subtitle="Roommates & partners" icon={<IconUsers size={20} />}>
@@ -66,9 +72,9 @@ export function SettingsScreen() {
   )
 }
 
-function Section({ title, subtitle, icon, children, open }: { title: string; subtitle?: string; icon?: ReactNode; children: ReactNode; open?: boolean }) {
+function Section({ title, subtitle, icon, children, open, id }: { title: string; subtitle?: string; icon?: ReactNode; children: ReactNode; open?: boolean; id?: string }) {
   return (
-    <details className="card group overflow-hidden" open={open}>
+    <details id={id} className="card group scroll-mt-4 overflow-hidden" open={open}>
       <summary className="flex cursor-pointer items-center gap-3 p-5 select-none">
         {icon && <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent-text">{icon}</span>}
         <span className="flex-1">

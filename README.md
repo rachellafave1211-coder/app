@@ -11,7 +11,7 @@ npm test          # budget engine + import tests
 npm run build     # typecheck + production build in dist/
 ```
 
-This version keeps all data in `localStorage` on the device. It opens with a sample budget, which you can edit or clear from Settings.
+Data is kept in `localStorage` on the device, and syncs across devices once Supabase is set up (below). A new device starts with an empty budget, with every balance at $0. A welcome checklist on the Budget page walks through entering balances, paychecks, bills and spending budgets, and offers a sample budget for anyone who wants to look around first. Settings → Your data can load the sample or clear everything.
 
 ## Deploy (Vercel)
 
