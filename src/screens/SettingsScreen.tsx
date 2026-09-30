@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { balances, sortedPaychecks } from '../lib/budget'
 import { ordinal } from '../lib/dates'
-import { uid } from '../lib/format'
+import { money, uid } from '../lib/format'
 import { rowsFromCsv, sheetsCsvUrl, type ImportRow } from '../lib/importer'
 import { householdLink, templateLink } from '../lib/links'
 import { emptyState, sampleState } from '../lib/seed'
@@ -10,8 +10,10 @@ import { getState, replaceState, setBalance, update, useStore } from '../lib/sto
 import { PRESETS } from '../lib/theme'
 import type { Bill, ThemeMode } from '../lib/types'
 import { IconBank, IconCheck, IconCloud, IconLink, IconPlus, IconTrash, IconUpload, IconUsers } from '../components/icons'
-import { Button, Pill, Segmented, toast } from '../components/ui'
+import { Button, Segmented, toast } from '../components/ui'
 import { ImportSheet } from './ImportSheet'
+import { bankApi, connectBank, disconnectBank, refreshBanks, useBank, type BankItem } from '../lib/bank'
+import { balancesFromAccounts, transactionsToRows } from '../lib/bankData'
 import { SyncPanel } from './SyncSection'
 import { syncSetupProblem, useSync, type SyncStatus } from '../lib/sync'
 import { BUILT_IN_TYPES, billTypeLabel } from '../lib/billTypes'
@@ -604,25 +606,147 @@ function ImportPanel() {
 }
 
 function BankCard() {
+  const sync = useSync()
+  const bank = useBank()
+  const signedIn = sync.status !== 'off' && sync.status !== 'signed-out'
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [review, setReview] = useState<{ item: BankItem; rows: ImportRow[]; skipped: number; cursor: string | null } | null>(null)
+  const [balances, setBalances] = useState<{ bank: string; checking: number | null; savings: number | null } | null>(null)
+
+  // Load the connected banks once; after a failure, wait for "Try again" instead of retrying in a loop.
+  useEffect(() => {
+    if (signedIn && bank.items === null && !bank.loading && !bank.error) void refreshBanks()
+  }, [signedIn, bank.items, bank.loading, bank.error])
+
+  const run = async (key: string, fn: () => Promise<void>) => {
+    setBusy(key)
+    setError(null)
+    try {
+      await fn()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const importFrom = (item: BankItem) =>
+    run(`sync:${item.item_id}`, async () => {
+      const res = await bankApi.sync(item.item_id)
+      const { rows, skipped } = transactionsToRows(res.transactions)
+      const b = balancesFromAccounts(res.accounts)
+      if (b.checking !== null || b.savings !== null) setBalances({ bank: item.institution_name, ...b })
+      if (!rows.length) {
+        await bankApi.commit(item.item_id, res.next_cursor)
+        toast(`No new spending from ${item.institution_name}`)
+        return
+      }
+      setReview({ item, rows, skipped, cursor: res.next_cursor })
+    })
+
   return (
-    <section className="card p-5">
+    <section className="card p-5" aria-label="Connect your bank">
       <div className="flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent-text">
           <IconBank size={20} />
         </span>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <p className="font-semibold">Connect your bank</p>
-            <Pill tone="accent">Soon</Pill>
-          </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">Connect your bank</p>
           <p className="mt-1 text-sm text-muted">
-            Read-only via Plaid. Transactions are auto-categorized, editable, and matched to bills so they check off on their own. Manual entry and CSV import always work without a bank.
+            Read-only, through Plaid. Payday never sees your bank password. New spending comes in for you to review: auto-categorized, editable, and matched to your bills so they check off on their own.
           </p>
         </div>
       </div>
-      <Button variant="ghost" className="mt-4 w-full" disabled>
-        Connect with Plaid
-      </Button>
+
+      {!signedIn ? (
+        <p className="mt-4 rounded-2xl bg-sunken p-3 text-sm text-muted">
+          {sync.status === 'off' ? 'The bank connection uses your Payday account. Set up sync first (see the README).' : 'Sign in under Sync across devices first. Your bank connection belongs to your account.'}
+        </p>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {bank.loading && bank.items === null && <p className="text-sm text-muted">Checking for connected banks…</p>}
+          {(bank.items ?? []).map((item) => (
+            <div key={item.item_id} className="rounded-2xl bg-sunken p-3">
+              <p className="font-semibold">{item.institution_name}</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Button className="py-2" disabled={!!busy} onClick={() => importFrom(item)}>
+                  {busy === `sync:${item.item_id}` ? 'Checking…' : 'Import new spending'}
+                </Button>
+                <ConfirmButton
+                  variant="ghost"
+                  confirmText="Tap again to disconnect"
+                  onConfirm={() => run(`remove:${item.item_id}`, () => disconnectBank(item.item_id))}
+                >
+                  Disconnect
+                </ConfirmButton>
+              </div>
+            </div>
+          ))}
+
+          {balances && (
+            <div className="rounded-2xl bg-accent-soft p-3 text-sm" role="status">
+              <p className="font-semibold text-accent-text">Balances at {balances.bank}</p>
+              <p className="mt-0.5">
+                {balances.checking !== null && <>Checking {money(balances.checking)}</>}
+                {balances.checking !== null && balances.savings !== null && ' · '}
+                {balances.savings !== null && <>Savings {money(balances.savings)}</>}
+              </p>
+              <Button
+                variant="soft"
+                className="mt-2 w-full bg-card py-2"
+                onClick={() => {
+                  if (balances.checking !== null) setBalance('checking', balances.checking)
+                  if (balances.savings !== null) setBalance('savings', balances.savings)
+                  setBalances(null)
+                  toast('Balances updated from your bank')
+                }}
+              >
+                Use these as my balances
+              </Button>
+            </div>
+          )}
+
+          <Button
+            variant={bank.items?.length ? 'ghost' : 'primary'}
+            className="w-full"
+            disabled={!!busy}
+            onClick={() =>
+              run('connect', async () => {
+                const item = await connectBank()
+                if (item) {
+                  toast(`Connected ${item.institution_name}`)
+                  await importFrom(item)
+                }
+              })
+            }
+          >
+            {busy === 'connect' ? 'Opening…' : bank.items?.length ? 'Connect another bank' : 'Connect a bank'}
+          </Button>
+          {(error || bank.error) && (
+            <div className="space-y-2" role="alert">
+              <p className="text-sm text-danger">{error || bank.error}</p>
+              {bank.error && bank.items === null && (
+                <Button variant="ghost" className="w-full py-2" disabled={bank.loading} onClick={() => void refreshBanks()}>
+                  {bank.loading ? 'Checking…' : 'Try again'}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <ImportSheet
+        rows={review?.rows ?? null}
+        skipped={review?.skipped ?? 0}
+        source="bank"
+        title={review ? `New from ${review.item.institution_name}` : 'Review import'}
+        note="Pending charges come in once they post. Money coming in, like your paycheck, isn’t counted as spending."
+        onImported={() => {
+          if (review) void bankApi.commit(review.item.item_id, review.cursor).catch((e) => setError((e as Error).message))
+        }}
+        onClose={() => setReview(null)}
+      />
     </section>
   )
 }

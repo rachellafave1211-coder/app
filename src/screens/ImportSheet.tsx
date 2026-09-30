@@ -15,7 +15,24 @@ interface Draft extends ImportRow {
 }
 
 /** Review imported transactions: auto-categorized, editable, and matched to bills. */
-export function ImportSheet({ rows, skipped, onClose }: { rows: ImportRow[] | null; skipped: number; onClose: () => void }) {
+export function ImportSheet({
+  rows,
+  skipped,
+  onClose,
+  onImported,
+  source = 'import',
+  title = 'Review import',
+  note,
+}: {
+  rows: ImportRow[] | null
+  skipped: number
+  onClose: () => void
+  /** Called after the person confirms the import (not when they cancel). */
+  onImported?: () => void
+  source?: 'import' | 'bank'
+  title?: string
+  note?: string
+}) {
   const state = useStore()
   const [drafts, setDrafts] = useState<Draft[]>([])
 
@@ -50,18 +67,20 @@ export function ImportSheet({ rows, skipped, onClose }: { rows: ImportRow[] | nu
       for (const d of chosen) {
         // Stamp bill payments with the transaction's day so older payments don't move today's balance.
         if (d.billKey) paid[d.billKey] = Math.min(now, parseDate(d.date).getTime() + 86_399_999)
-        else expenses.push({ id: uid(), date: d.date, note: d.name, categoryId: d.categoryId, amount: d.amount, source: 'import', addedAt: now })
+        else expenses.push({ id: uid(), date: d.date, note: d.name, categoryId: d.categoryId, amount: d.amount, source, addedAt: now })
       }
       return { ...s, paid, expenses }
     })
     toast(`Imported ${chosen.length - billCount} expenses${billCount ? `, checked off ${billCount} bills` : ''}`)
+    onImported?.()
     onClose()
   }
 
   return (
-    <Sheet open={!!rows} onClose={onClose} title="Review import">
+    <Sheet open={!!rows} onClose={onClose} title={title}>
+      {note && <p className="mb-2 text-sm font-medium">{note}</p>}
       <p className="text-sm text-muted">
-        {drafts.length} transactions{skipped ? ` · ${skipped} rows skipped` : ''}. Categories were guessed — tap to change. Bill payments check off the matching bill instead of counting as spending.
+        {drafts.length} transactions{skipped ? ` · ${skipped} ${source === 'bank' ? 'pending or incoming not imported' : 'rows skipped'}` : ''}. Categories were guessed — tap to change. Bill payments check off the matching bill instead of counting as spending.
       </p>
       <ul className="mt-4 divide-y divide-line">
         {drafts.map((d) => (

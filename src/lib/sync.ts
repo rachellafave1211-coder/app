@@ -31,6 +31,9 @@ const supabase = makeClient()
 /** Sync is available only when the site was built with working Supabase settings. */
 export const syncConfigured = supabase !== null
 
+/** The Supabase client, for other features that use the signed-in account (bank connection). */
+export const supabaseClient = () => supabase
+
 interface Row {
   data: SyncedData
   updated_at: string

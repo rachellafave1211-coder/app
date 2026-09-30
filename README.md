@@ -66,12 +66,39 @@ Limits of Supabase's built-in email sender (connect your own SMTP service under 
 
 Supabase free-tier projects pause after a week without activity. Unpause the project from the dashboard if sync stops working.
 
+## Connect your bank (Plaid)
+
+Settings → **Connect your bank** links a bank read-only through [Plaid](https://plaid.com). The bank sign-in happens in Plaid's window, so Payday never sees bank passwords. After connecting, **Import new spending** brings in posted spending for review, in the same screen as CSV import:
+- Transactions are auto-categorized, and you can edit the category before importing.
+- Payments that match a bill check that bill off.
+- Pending charges come in once they post. Money coming in, such as paychecks and refunds, isn't counted as spending.
+- Only transactions you haven't imported come in.
+
+**Use these as my balances** sets Checking and Savings from the bank's deposit accounts.
+
+The Plaid secret and each bank's access token live only on the server: a Supabase Edge Function (`supabase/functions/plaid`) and a table the app can't read (`plaid_items`). Bank connections belong to the signed-in account, so set up sync first.
+
+Setup:
+1. **Plaid account:** sign up at https://dashboard.plaid.com. Under **Developers → Keys**, copy your `client_id` and your **Sandbox** secret. Sandbox is free and uses test banks.
+2. **Table:** in Supabase's **SQL Editor**, run `supabase/migrations/0002_plaid.sql`.
+3. **Function:** in Supabase, go to **Edge Functions → Deploy a new function → Via Editor**. Name it `plaid`, replace the sample code with the contents of `supabase/functions/plaid/index.ts`, and click **Deploy**. Keep **Verify JWT** on. With the Supabase CLI, you can instead run `supabase functions deploy plaid`.
+4. **Secrets:** under **Edge Functions → Secrets**, add:
+   - `PLAID_CLIENT_ID`: your client id
+   - `PLAID_SECRET`: your Sandbox secret
+   - `PLAID_ENV`: `sandbox`
+   - `PLAID_REDIRECT_URI` (optional; needed for banks that sign in on their own website, such as Chase): your site, for example `https://app-bay-rho-90.vercel.app/`. Add the same address under **Developers → API → Allowed redirect URIs** in Plaid.
+5. **Try it:** in Payday, go to **Settings → Connect your bank → Connect a bank**. Pick any bank and sign in with username `user_good` and password `pass_good`.
+
+**Real banks:** request Production access in the Plaid dashboard. Plaid reviews the request, and live data may cost money depending on your plan. Once approved, change `PLAID_ENV` to `production` and `PLAID_SECRET` to your Production secret. Nothing in the app changes.
+
+The function's tests (`supabase/functions/plaid/index.test.ts`) run with `npm test` against fake Plaid and Supabase services.
+
 ## What's in it
 
 - **Budget.** Running Checking, Savings and Total balances (tap one to set it), a month switcher, a "Left to spend" hero with a progress ring, and one card per paycheck. Each card has Short/free pills, category bars that turn red when over budget, and bill check-offs. Bills assigned to a paycheck in Settings are marked "assigned in Settings".
 - **Calendar.** A compact month grid with dots for paydays, bills, reminders and unfinished tasks. Tap a day to see its paycheck, bills, reminders and tasks. Below it, a to-do list: tasks with an optional due date (a selected day becomes the new task's due date).
 - **Reminders.** An agenda of what's coming up, grouped into Overdue, Today, Tomorrow, each day this week, and Later. Unpaid bills due this week and your reminders are marked with colored dots. Finished reminders go to a collapsible Completed list. Local notifications work too (a service worker handles them once the app is installed).
-- **Settings.** 6 preset accents plus a custom color, light/dark/auto, account balances, and editors for paychecks, categories and bills. Each bill can be assigned to a specific paycheck and given a type: Bill, Subscription, Savings, Debt, or one you add. Also: shared budgets with rent-split tracking, CSV / Google Sheets import, the bank card, template links and data reset.
+- **Settings.** 6 preset accents plus a custom color, light/dark/auto, account balances, and editors for paychecks, categories and bills. Each bill can be assigned to a specific paycheck and given a type: Bill, Subscription, Savings, Debt, or one you add. Also: shared budgets with rent-split tracking, CSV / Google Sheets import, bank connection, template links and data reset.
 - **Add expense (+).** A bottom sheet with amount, category chips, an optional note and a date.
 - **Sharing.**
   - A *Paycheck Wrapped* recap image in your theme colors that shows percentages only.
@@ -97,5 +124,5 @@ CSV columns are `date, name, category, amount`. The header is optional, and when
 
 ## Roadmap
 
-- Supabase auth + sync (live shared households, email alerts)
-- Plaid read-only bank linking, reusing the import pipeline (auto-categorize → review → bill matching)
+- Live shared households (roommates see the same split bills) and email alerts
+- Automatic bank imports in the background (today you tap **Import new spending**)
