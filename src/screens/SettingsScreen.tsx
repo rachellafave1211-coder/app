@@ -69,7 +69,12 @@ export function SettingsScreen({ focus = null }: { focus?: SettingsSection | nul
           <DataPanel />
         </Section>
       </div>
-      <p className="mt-8 text-center text-xs text-muted">Payday · your data stays on this device</p>
+      <p className="mt-8 text-center text-xs text-muted">
+        Payday ·{' '}
+        <a href="/privacy" className="font-semibold underline">
+          Privacy Policy
+        </a>
+      </p>
     </div>
   )
 }
@@ -723,6 +728,17 @@ function BankCard() {
           >
             {busy === 'connect' ? 'Opening…' : bank.items?.length ? 'Connect another bank' : 'Connect a bank'}
           </Button>
+          <p className="text-xs text-muted">
+            By connecting a bank, you agree to Payday’s{' '}
+            <a href="/privacy" className="font-semibold underline">
+              Privacy Policy
+            </a>{' '}
+            and Plaid’s{' '}
+            <a href="https://plaid.com/legal/#end-user-privacy-policy" target="_blank" rel="noopener" className="font-semibold underline">
+              End User Privacy Policy
+            </a>
+            .
+          </p>
           {(error || bank.error) && (
             <div className="space-y-2" role="alert">
               <p className="text-sm text-danger">{error || bank.error}</p>
