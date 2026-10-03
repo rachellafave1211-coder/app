@@ -81,13 +81,13 @@ The Plaid secret and each bank's access token live only on the server: a Supabas
 Setup:
 1. **Plaid account:** sign up at https://dashboard.plaid.com. Under **Developers → Keys**, copy your `client_id` and your **Sandbox** secret. Sandbox is free and uses test banks.
 2. **Table:** in Supabase's **SQL Editor**, run `supabase/migrations/0002_plaid.sql`.
-3. **Function:** in Supabase, go to **Edge Functions → Deploy a new function → Via Editor**. Name it `plaid`, replace the sample code with the contents of `supabase/functions/plaid/index.ts`, and click **Deploy**. Keep **Verify JWT** on. With the Supabase CLI, you can instead run `supabase functions deploy plaid`.
+3. **Function:** in Supabase, go to **Edge Functions → Deploy a new function → Via Editor**. Name it `plaid`, replace the sample code with the contents of `supabase/functions/plaid/index.ts`, and click **Deploy**. Then, in the function's settings, turn **Verify JWT** (or **Verify JWT with legacy secret**) **off**. The function checks the signed-in user on every request itself, and the gateway check can reject sessions on newer Supabase projects. With the Supabase CLI, you can instead run `supabase functions deploy plaid --no-verify-jwt`.
 4. **Secrets:** under **Edge Functions → Secrets**, add:
    - `PLAID_CLIENT_ID`: your client id
    - `PLAID_SECRET`: your Sandbox secret
    - `PLAID_ENV`: `sandbox`
    - `PLAID_REDIRECT_URI` (optional; needed for banks that sign in on their own website, such as Chase): your site, for example `https://app-bay-rho-90.vercel.app/`. Add the same address under **Developers → API → Allowed redirect URIs** in Plaid.
-5. **Try it:** in Payday, go to **Settings → Connect your bank → Connect a bank**. Pick any bank and sign in with username `user_good` and password `pass_good`.
+5. **Try it:** in Payday, go to **Settings → Connect your bank → Connect a bank**. If Plaid asks for a phone number, skip it. Choose **First Platypus Bank** (not an "OAuth" test bank unless `PLAID_REDIRECT_URI` is set), then sign in with username `user_good` and password `pass_good`. A new connection's transactions can take a minute or two to appear; tap **Import new spending** again if the first check finds none. The test data is fake, so close the review without importing and disconnect the test bank afterwards.
 
 **Real banks:** request Production access in the Plaid dashboard. Plaid reviews the request, and live data may cost money depending on your plan. Once approved, change `PLAID_ENV` to `production` and `PLAID_SECRET` to your Production secret. Nothing in the app changes.
 
