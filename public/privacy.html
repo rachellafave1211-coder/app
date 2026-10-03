@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="How Payday handles your data." />
+    <link rel="icon" type="image/png" href="/icons/favicon-64.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,600&display=swap"
+      rel="stylesheet"
+    />
+    <title>Payday Privacy Policy</title>
+    <style>
+      :root {
+        --bg: #f4f5f8;
+        --card: #ffffff;
+        --text: #1b1d24;
+        --muted: #5d6170;
+        --line: #e4e6ec;
+        --accent: #1c4a44;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #121319;
+          --card: #1c1e27;
+          --text: #eceef3;
+          --muted: #a2a6b4;
+          --line: #2c2f3b;
+          --accent: #8cbdb5;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px/1.6 'DM Sans', system-ui, sans-serif;
+        -webkit-text-size-adjust: 100%;
+      }
+      main {
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: max(24px, env(safe-area-inset-top)) 16px 64px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        padding: 24px 20px;
+      }
+      h1 { font: 600 2rem/1.15 Fraunces, Georgia, serif; margin: 0 0 4px; }
+      h2 { font-size: 1.1rem; margin: 2rem 0 0.4rem; }
+      p, li { margin: 0.4rem 0; }
+      ul { padding-left: 1.2rem; }
+      a { color: var(--accent); font-weight: 600; }
+      .muted { color: var(--muted); }
+      .back { display: inline-block; margin-bottom: 16px; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="/">‹ Back to Payday</a>
+      <div class="card">
+        <h1>Privacy Policy</h1>
+        <p class="muted">Effective October 3, 2026</p>
+
+        <p>
+          Payday is a personal budgeting app that plans your spending around your paychecks. This policy explains what
+          information Payday collects, how it's used, and the choices you have. Payday is built and run by an independent developer, referred to here as "we".
+        </p>
+
+        <h2>The short version</h2>
+        <ul>
+          <li>Payday uses your information only to run your budget. We don't sell it, share it for advertising, or use analytics or tracking tools.</li>
+          <li>Connecting a bank is optional. It happens through Plaid, and Payday never sees your bank username or password.</li>
+          <li>You can disconnect a bank, erase your budget, or ask us to delete your account at any time.</li>
+        </ul>
+
+        <h2>Information Payday collects</h2>
+        <ul>
+          <li><strong>What you enter:</strong> your paychecks, bills, spending categories, expenses, account balances, reminders, tasks and display settings.</li>
+          <li><strong>Your email address,</strong> if you sign in to sync across devices. Sign-in uses a one-time link, so there's no password.</li>
+          <li>
+            <strong>Bank information, only if you connect a bank:</strong> through Plaid, Payday receives the names, types and
+            balances of your accounts and your recent transactions. Payday also stores the bank's name and an access token
+            that lets it fetch new transactions.
+          </li>
+          <li><strong>Files you import</strong> (CSV or a Google Sheet you link) are read on your device to create expenses. The file itself isn't uploaded.</li>
+        </ul>
+
+        <h2>How it's used</h2>
+        <p>
+          Only to provide Payday's features: building your paycheck budgets, showing your balances, suggesting categories
+          for imported spending, checking off bills that you've paid, and sending the reminders you turn on. Transactions from your bank
+          are shown to you for review, and only the ones you choose to import are saved to your budget. Balances from your bank are only
+          used if you tap "Use these as my balances".
+        </p>
+
+        <h2>Where it's stored</h2>
+        <ul>
+          <li><strong>On your device:</strong> your budget is saved in your browser or the installed app.</li>
+          <li><strong>In your account, if you sign in:</strong> your budget is stored with Supabase, our database provider, so it can sync across your devices. Database rules make it readable only by your account.</li>
+          <li><strong>Bank access tokens</strong> are stored only on our server, in a table the app itself can't read, and are never sent to your device.</li>
+        </ul>
+
+        <h2>Who we share it with</h2>
+        <p>We share information only with the service providers that run Payday, and only so they can provide their service:</p>
+        <ul>
+          <li><strong>Plaid</strong> connects your bank. Plaid's handling of your data is described in the <a href="https://plaid.com/legal/#end-user-privacy-policy" rel="noopener">Plaid End User Privacy Policy</a>.</li>
+          <li><strong>Supabase</strong> stores account data and sends sign-in emails.</li>
+          <li><strong>Vercel</strong> hosts the Payday website.</li>
+        </ul>
+        <p>We may also disclose information if the law requires it. We never sell your information.</p>
+
+        <h2>Your consent and choices</h2>
+        <ul>
+          <li>Payday only connects to a bank when you choose to, and Plaid asks for your permission before sharing any bank data.</li>
+          <li><strong>Disconnect a bank</strong> in Settings → Connect your bank. Payday deletes the access token and tells Plaid to end the connection.</li>
+          <li><strong>Erase your budget</strong> in Settings → Your data → Clear all data. While you're signed in, this erases it from your account and all your devices.</li>
+          <li><strong>Delete your account,</strong> or ask for a copy of your data, by emailing us (below). We'll respond within 30 days.</li>
+        </ul>
+
+        <h2>How long we keep it</h2>
+        <p>
+          We keep your information while you use Payday. Bank access tokens are deleted as soon as you disconnect a bank. When you delete your
+          account, we delete your budget, your bank connections and your sign-in details within 30 days. Copies may remain in our providers'
+          backups for a short time before they're overwritten. We review this policy at least once a year.
+        </p>
+
+        <h2>Security</h2>
+        <p>
+          All connections to Payday are encrypted with TLS (HTTPS). Data stored with Supabase is encrypted at rest. Each account can only read
+          its own data, and the developer accounts that run Payday are protected with two-factor authentication. No system is perfectly secure, but we work to
+          protect your information and will notify affected users of any breach as required by law.
+        </p>
+
+        <h2>Children</h2>
+        <p>Payday isn't intended for children under 13, and we don't knowingly collect information from them.</p>
+
+        <h2>Changes</h2>
+        <p>If we change this policy, we'll update it here and change the date at the top. For significant changes, we'll let you know in the app.</p>
+
+        <h2>Contact</h2>
+        <p>Questions, data requests or account deletion: <a href="mailto:PRIVACY_EMAIL">PRIVACY_EMAIL</a></p>
+      </div>
+    </main>
+  </body>
+</html>
