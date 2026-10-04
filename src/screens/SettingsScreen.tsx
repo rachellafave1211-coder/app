@@ -65,7 +65,7 @@ export function SettingsScreen({ focus = null }: { focus?: SettingsSection | nul
         <Section title="Share a budget template" subtitle="A link friends can copy" icon={<IconLink size={20} />}>
           <TemplateShare />
         </Section>
-        <Section title="Your data" subtitle="Stored on this device">
+        <Section title="Your data" subtitle="Back up, load a sample, or clear everything">
           <DataPanel />
         </Section>
       </div>
