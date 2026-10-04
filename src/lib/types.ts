@@ -30,6 +30,8 @@ export interface Bill {
   paycheckId?: Id
   /** Household members who split this bill equally with you. */
   splitWith?: Id[]
+  /** Bank merchant names (see `merchantKey`) that pay this bill, learned when a charge is marked as paying it. */
+  merchants?: string[]
 }
 
 export interface Category {
