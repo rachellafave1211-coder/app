@@ -1,4 +1,6 @@
-import type { Category, Expense } from './types'
+import { nearestOccurrence } from './budget'
+import { toDateStr } from './dates'
+import type { AppState, Category, Expense } from './types'
 
 /**
  * A merchant name with store numbers, card-processor prefixes and punctuation removed, so
@@ -35,3 +37,30 @@ export function sameMerchantUncategorized(expense: Pick<Expense, 'id' | 'note'>,
 }
 
 export const isUncategorized = (e: Expense, categories: Category[]) => !hasCategory(e, categories)
+
+/**
+ * Turns an expense into a payment of `billId`: the bill's nearest occurrence is checked off,
+ * the expense is removed so it isn't counted twice, and the merchant is remembered so later
+ * imports check the bill off on their own.
+ */
+export function payBillWithExpense(state: AppState, expenseId: string, billId: string, now = Date.now()): { state: AppState; key: string } | null {
+  const expense = state.expenses.find((e) => e.id === expenseId)
+  const bill = state.bills.find((b) => b.id === billId)
+  if (!expense || !bill) return null
+  const key = nearestOccurrence(bill, expense.date, state.paid)
+  // Keep the balance effect the expense had: counted only if it was logged after Checking was set.
+  const since = state.accounts.checking.since
+  const counted = expense.addedAt !== undefined && expense.addedAt > since && expense.date >= toDateStr(new Date(since))
+  const stamp: number | true = counted ? Math.min(now, expense.addedAt!) : true
+  const merchant = merchantKey(expense.note)
+  const merchants = merchant && !bill.merchants?.includes(merchant) ? [...(bill.merchants ?? []), merchant] : bill.merchants
+  return {
+    key,
+    state: {
+      ...state,
+      expenses: state.expenses.filter((e) => e.id !== expenseId),
+      paid: { ...state.paid, [key]: state.paid[key] ?? stamp },
+      bills: state.bills.map((b) => (b.id === billId ? { ...b, merchants } : b)),
+    },
+  }
+}

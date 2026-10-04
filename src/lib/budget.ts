@@ -1,4 +1,4 @@
-import { addMonths, dateInMonth, shortDate, toDateStr } from './dates'
+import { addMonths, dateInMonth, daysBetween, shortDate, toDateStr } from './dates'
 import type { AppState, Bill, Category, DateStr, Expense, MonthKey, Paycheck } from './types'
 
 /** One paycheck landing on a specific date. */
@@ -287,4 +287,17 @@ export function sum(ns: number[]): number {
 
 export function categoryById(categories: Category[], id: string): Category | undefined {
   return categories.find((c) => c.id === id)
+}
+
+/**
+ * The occurrence key (`billId@YYYY-MM`) of the bill's due date nearest to `date`. With `paid`,
+ * the nearest unpaid occurrence wins, so a payment fills the month that still needs it.
+ */
+export function nearestOccurrence(bill: Bill, date: DateStr, paid?: AppState['paid']): string {
+  const month = date.slice(0, 7)
+  const best = [-1, 0, 1]
+    .map((o) => addMonths(month, o))
+    .map((mk) => ({ mk, done: paid?.[`${bill.id}@${mk}`] ? 1 : 0, gap: Math.abs(daysBetween(dateInMonth(mk, bill.day), date)) }))
+    .sort((a, b) => a.done - b.done || a.gap - b.gap)[0]
+  return `${bill.id}@${best.mk}`
 }

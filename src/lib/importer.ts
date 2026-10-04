@@ -1,5 +1,7 @@
-import { addMonths, daysBetween, dateInMonth, toDateStr } from './dates'
+import { toDateStr } from './dates'
 import { round2 } from './format'
+import { nearestOccurrence } from './budget'
+import { merchantKey } from './expenses'
 import type { Bill, Category, DateStr } from './types'
 
 /** Minimal RFC 4180 CSV parser (quotes, escaped quotes, CRLF). */
@@ -134,10 +136,14 @@ export function autoCategory(name: string, label: string, categories: Category[]
 }
 
 /**
- * A bill this transaction pays: names overlap and the amount is within 10%.
- * Returns the occurrence key for the bill's due month closest to the date.
+ * A bill this transaction pays: a merchant the person marked as paying it (any amount), or
+ * names that overlap with the amount within 10%. Returns the occurrence key for the bill's
+ * due month closest to the date.
  */
 export function matchBill(row: ImportRow, bills: Bill[]): { bill: Bill; key: string } | null {
+  const merchant = merchantKey(row.name)
+  const learned = merchant ? bills.find((b) => b.merchants?.includes(merchant)) : undefined
+  if (learned) return { bill: learned, key: nearestOccurrence(learned, row.date) }
   const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9& ]/g, ' ').split(/\s+/).filter((w) => w.length >= 3 || w === 'pg&e')
   const rowWords = new Set(words(`${row.name} ${row.category}`))
   for (const bill of bills) {
@@ -145,12 +151,7 @@ export function matchBill(row: ImportRow, bills: Bill[]): { bill: Bill; key: str
     const close = Math.abs(row.amount - bill.amount) <= Math.max(1, bill.amount * 0.1)
     if (!nameHit || !close) continue
     // Paid near the due date: pick the due month whose due date is nearest.
-    const month = row.date.slice(0, 7)
-    const best = [-1, 0, 1]
-      .map((o) => addMonths(month, o))
-      .map((mk) => ({ mk, gap: Math.abs(daysBetween(dateInMonth(mk, bill.day), row.date)) }))
-      .sort((a, b) => a.gap - b.gap)[0]
-    return { bill, key: `${bill.id}@${best.mk}` }
+    return { bill, key: nearestOccurrence(bill, row.date) }
   }
   return null
 }
