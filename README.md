@@ -100,6 +100,7 @@ The function's tests (`supabase/functions/plaid/index.test.ts`) run with `npm te
 - **Reminders.** An agenda of what's coming up, grouped into Overdue, Today, Tomorrow, each day this week, and Later. Unpaid bills due this week and your reminders are marked with colored dots. Finished reminders go to a collapsible Completed list. Local notifications work too (a service worker handles them once the app is installed).
 - **Settings.** 6 preset accents plus a custom color, light/dark/auto, account balances, and editors for paychecks, categories and bills. Each bill can be assigned to a specific paycheck and given a type: Bill, Subscription, Savings, Debt, or one you add. Also: shared budgets with rent-split tracking, CSV / Google Sheets import, bank connection, template links and data reset.
 - **Add expense (+).** A bottom sheet with amount, category chips, an optional note and a date.
+- **Edit spending.** Tap any expense under Recent spending to change its category, amount, note or date, or delete it. A banner counts the month's uncategorized charges and filters the list to them. Giving one a category offers to do the same for other uncategorized charges from that merchant, and later imports from that merchant use it (`src/lib/expenses.ts`).
 - **Privacy policy.** `public/privacy.html`, served at `/privacy` and linked from Settings and the bank connection.
 - **Sharing.**
   - A *Paycheck Wrapped* recap image in your theme colors that shows percentages only.

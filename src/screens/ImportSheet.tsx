@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { autoCategory, matchBill, type ImportRow } from '../lib/importer'
+import { learnedCategory } from '../lib/expenses'
 import { parseDate, shortDate } from '../lib/dates'
 import { money, uid } from '../lib/format'
 import { update, useStore } from '../lib/store'
@@ -45,7 +46,8 @@ export function ImportSheet({
         return {
           ...r,
           key: String(i),
-          categoryId: autoCategory(r.name, r.category, state.categories),
+          // What the person chose for this merchant before beats a keyword guess.
+          categoryId: learnedCategory(r.name, state.expenses, state.categories) || autoCategory(r.name, r.category, state.categories),
           billKey: match?.key ?? null,
           billName: match?.bill.name ?? '',
           include: !existing.has(`${r.date}|${r.amount}|${r.name}`),

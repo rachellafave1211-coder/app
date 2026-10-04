@@ -4,7 +4,8 @@ import { billTypeLabel } from '../lib/billTypes'
 import { addMonths, monthShort, shortDate, thisMonth, weekdayDate } from '../lib/dates'
 import { money, moneyWhole, pct } from '../lib/format'
 import { replaceState, togglePaid, update, useStore } from '../lib/store'
-import type { AppState } from '../lib/types'
+import type { AppState, Expense } from '../lib/types'
+import { isUncategorized } from '../lib/expenses'
 import { IconShare, IconTrash } from '../components/icons'
 import { Bar, Button, CheckCircle, MonthSwitcher, Pill, Ring, SectionTitle, toast } from '../components/ui'
 import { WrappedSheet } from './WrappedSheet'
@@ -12,6 +13,7 @@ import { SplitsCard } from './SplitsCard'
 import { BalancesCard } from './BalancesCard'
 import type { SettingsSection } from './SettingsScreen'
 import { sampleState } from '../lib/seed'
+import { AddExpenseSheet } from './AddExpenseSheet'
 
 
 export function BudgetScreen({ onGoSettings }: { onGoSettings: (section: SettingsSection) => void }) {
@@ -24,6 +26,11 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: (section: Setting
   const used = available > 0 ? plan.spent / available : plan.spent > 0 ? 1 : 0
   const monthExpenses = state.expenses.filter((e) => e.date.startsWith(month)).sort((a, b) => (a.date < b.date ? 1 : -1))
   const [showAll, setShowAll] = useState(false)
+  const [onlyUncategorized, setOnlyUncategorized] = useState(false)
+  const [editing, setEditing] = useState<Expense | null>(null)
+  const uncategorized = monthExpenses.filter((e) => isUncategorized(e, state.categories))
+  const filtering = onlyUncategorized && uncategorized.length > 0
+  const listed = filtering ? uncategorized : showAll ? monthExpenses : monthExpenses.slice(0, 6)
 
   return (
     <div>
@@ -79,7 +86,8 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: (section: Setting
 
       <SectionTitle
         action={
-          monthExpenses.length > 6 && (
+          monthExpenses.length > 6 &&
+          !filtering && (
             <button className="text-sm font-semibold text-accent-text" onClick={() => setShowAll(!showAll)}>
               {showAll ? 'Show less' : `All ${monthExpenses.length}`}
             </button>
@@ -88,34 +96,53 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: (section: Setting
       >
         Recent spending
       </SectionTitle>
+      {uncategorized.length > 0 && (
+        <button
+          className={`press mb-3 flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold ${filtering ? 'bg-accent text-on-accent' : 'bg-accent-soft text-accent-text'}`}
+          aria-pressed={filtering}
+          onClick={() => setOnlyUncategorized(!filtering)}
+        >
+          <span>
+            {uncategorized.length} uncategorized {uncategorized.length === 1 ? 'charge' : 'charges'}
+            {filtering ? '' : ' · tap to sort'}
+          </span>
+          <span>{filtering ? 'Show all' : '›'}</span>
+        </button>
+      )}
       <div className="card divide-y divide-line px-4">
         {monthExpenses.length === 0 && <p className="py-5 text-center text-sm text-muted">Nothing spent yet this month. Tap + to log an expense.</p>}
-        {(showAll ? monthExpenses : monthExpenses.slice(0, 6)).map((e) => {
+        {listed.map((e) => {
           const cat = categoryById(state.categories, e.categoryId)
           const where = placeExpense(state.paychecks, e)
           const name = e.note || cat?.name || 'Expense'
           return (
-            <div key={e.id} className="flex items-center gap-3 py-3">
-              <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent-soft text-lg" aria-hidden="true">
-                {cat?.emoji ?? '•'}
-              </div>
+            <div key={e.id} className="flex items-start gap-1 py-3">
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{name}</p>
-                <p className="text-xs text-muted">
-                  {shortDate(e.date)} · {cat?.name ?? 'Uncategorized'}
-                  {where && ` · ${paycheckLabel(state.paychecks, where.current, false)}`}
-                </p>
+                <button className="press flex w-full items-center gap-3 text-left" onClick={() => setEditing(e)} aria-label={`Edit ${name}, ${money(e.amount)}`}>
+                  <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent-soft text-lg" aria-hidden="true">
+                    {cat?.emoji ?? '•'}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">{name}</span>
+                    <span className="block text-xs text-muted">
+                      {shortDate(e.date)} · {cat ? cat.name : <span className="font-semibold text-accent-text">Uncategorized</span>}
+                      {where && ` · ${paycheckLabel(state.paychecks, where.current, false)}`}
+                    </span>
+                  </span>
+                  <span className="num text-lg font-semibold">{money(e.amount)}</span>
+                </button>
                 {where?.moved && (
-                  <MovedTag
-                    name={name}
-                    from={where.original && paycheckLabel(state.paychecks, where.original, where.original.month !== where.current.month)}
-                    onBack={where.original ? () => moveItem({ kind: 'expense', id: e.id, name, where }, where.original!) : undefined}
-                  />
+                  <div className="pl-13">
+                    <MovedTag
+                      name={name}
+                      from={where.original && paycheckLabel(state.paychecks, where.original, where.original.month !== where.current.month)}
+                      onBack={where.original ? () => moveItem({ kind: 'expense', id: e.id, name, where }, where.original!) : undefined}
+                    />
+                  </div>
                 )}
               </div>
-              <p className="num text-lg font-semibold">{money(e.amount)}</p>
               <button
-                className="press grid size-9 place-items-center rounded-full text-muted hover:bg-sunken hover:text-danger"
+                className="press grid size-10 shrink-0 place-items-center rounded-full text-muted hover:bg-sunken hover:text-danger"
                 aria-label={`Delete ${e.note || 'expense'}`}
                 onClick={() => update((s) => ({ ...s, expenses: s.expenses.filter((x) => x.id !== e.id) }))}
               >
@@ -132,6 +159,7 @@ export function BudgetScreen({ onGoSettings }: { onGoSettings: (section: Setting
       <p className="mt-2 text-center text-xs text-muted">Recaps only show percentages — never your dollar amounts.</p>
 
       <WrappedSheet open={wrapped} onClose={() => setWrapped(false)} plan={plan} />
+      <AddExpenseSheet open={!!editing} expense={editing} onClose={() => setEditing(null)} />
     </div>
   )
 }
