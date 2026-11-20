@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 110">
+  <!-- Tidewell wordmark. Uses Cormorant Garamond if installed, otherwise Georgia. -->
+  <text x="10" y="70" font-family="'Cormorant Garamond', Georgia, 'Times New Roman', serif" font-size="72" font-weight="600" letter-spacing="1.5" fill="#133f52">Tidewell</text>
+  <path d="M12 90 C 24 82, 36 82, 48 90 S 72 98, 84 90 S 108 82, 120 90" fill="none" stroke="#8fbccb" stroke-width="4" stroke-linecap="round"/>
+</svg>
