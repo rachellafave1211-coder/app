@@ -63,13 +63,23 @@ form.addEventListener('submit', async (e) => {
       body: new FormData(form),
       headers: { Accept: 'application/json' },
     });
-    if (!res.ok) throw new Error('Request failed');
+    if (!res.ok) {
+      // Show Formspree's own reason (e.g. form not confirmed yet) when it gives one
+      const data = await res.json().catch(() => ({}));
+      const reason = (data.errors || []).map((err) => err.message).filter(Boolean).join(' ');
+      throw new Error(reason || 'Request failed');
+    }
     form.reset();
     form.classList.add('sent');
     statusEl.textContent = "Thank you! We'll review your listing and reply within one business day.";
     statusEl.classList.add('success');
-  } catch {
-    statusEl.innerHTML = `Something went wrong. Please try again or email <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.`;
+  } catch (err) {
+    const detail = err.message && err.message !== 'Request failed' && err.message !== 'Failed to fetch' ? ` (${err.message})` : '';
+    statusEl.textContent = `Something went wrong${detail}. Please try again or email `;
+    const link = document.createElement('a');
+    link.href = `mailto:${CONTACT_EMAIL}`;
+    link.textContent = CONTACT_EMAIL;
+    statusEl.append(link, '.');
     statusEl.classList.add('error');
     button.disabled = false;
     button.textContent = 'Request my free review';
