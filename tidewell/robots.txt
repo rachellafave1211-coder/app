@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://tidewellhosting.com/sitemap.xml
+Sitemap: https://www.tidewellhosting.com/sitemap.xml
