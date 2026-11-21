@@ -11,8 +11,9 @@ tidewell/
 ├── logo.svg          ← Tidewell wordmark (for email signatures, social profiles, etc.)
 ├── favicon.svg       ← browser-tab icon
 ├── images/
-│   ├── hero.svg      ← placeholder: big top image
-│   ├── coast.svg     ← placeholder: "How it works" image
+│   ├── hero-1800.jpg ← top photo, desktop (wide)
+│   ├── hero-900.jpg  ← top photo, phones (tall crop)
+│   ├── coast.jpg     ← "How it works" photo (tall)
 │   └── og-image.jpg  ← preview image shown when the link is shared in texts/social
 ├── robots.txt, sitemap.xml   ← help Google find the site
 └── vercel.json       ← tells Vercel "this is a plain static site"
@@ -133,8 +134,10 @@ The placeholders are lightweight illustrations. To use real photos:
 1. Pick a wide, bright beach photo for the top (landscape, at least 1600px wide) and a vertical one for "How it works" (portrait, ~900×1100).
    Free sources: **unsplash.com** or **pexels.com** (search "beach house", "coastal porch", "ocean shoreline"). Your own property photos are even better.
 2. Shrink them first at **squoosh.app** (choose WebP or JPG, quality ~75). Aim for under 300 KB each so the site stays fast on phones.
-3. Upload them to `tidewell/images/` as `hero.jpg` and `coast.jpg` (on GitHub: open the folder → **Add file → Upload files**).
-4. In `index.html`, change `images/hero.svg` → `images/hero.jpg` and `images/coast.svg` → `images/coast.jpg`, and update the `alt="..."` text to describe the new photo.
+3. Upload them to `tidewell/images/` with the **same file names** to replace the current photos: `hero-1800.jpg` (wide, ~1800px), `hero-900.jpg` (tall crop for phones, ~900×1200) and `coast.jpg` (tall, ~900×1125). On GitHub: open the folder → **Add file → Upload files**.
+4. In `index.html`, update the `alt="..."` text to describe the new photos.
+
+The current photos are free Unsplash images (Unsplash License, no credit required).
 
 ## Changing colors or fonts
 All colors are at the top of `styles.css` (`--ocean-700`, `--sand-100`, etc.). Change a value once and it updates everywhere.

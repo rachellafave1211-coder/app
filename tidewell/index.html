@@ -75,8 +75,11 @@
 
     <!-- ===== 1. Hero ===== -->
     <section class="hero">
-      <!-- Swap this image: put your photo at images/hero.jpg and change the src below -->
-      <img class="hero-img" src="images/hero.svg" alt="Calm ocean waves meeting a sandy beach" width="1600" height="1000" fetchpriority="high">
+      <!-- Photo: Unsplash (free license). To swap, replace images/hero-900.jpg (portrait, phones) and images/hero-1800.jpg (wide, desktop) -->
+      <picture>
+        <source media="(max-width: 700px)" srcset="images/hero-900.jpg">
+        <img class="hero-img" src="images/hero-1800.jpg" alt="Gentle turquoise waves rolling onto a pale sand beach at sunrise" width="1800" height="1197" fetchpriority="high">
+      </picture>
       <div class="hero-overlay"></div>
       <div class="container hero-content">
         <p class="eyebrow">Remote co-hosting for beach &amp; coastal rentals</p>
@@ -169,9 +172,9 @@
           <a href="#contact" class="btn btn-primary">Start with a free review</a>
         </div>
 
-        <!-- Swap this image: put your photo at images/coast.jpg and change the src below -->
+        <!-- Photo: Unsplash (free license). To swap, replace images/coast.jpg (portrait, about 900x1125) -->
         <figure class="how-figure">
-          <img src="images/coast.svg" alt="Beach house porch overlooking the ocean" width="900" height="1100" loading="lazy">
+          <img src="images/coast.jpg" alt="Shaded wooden deck of a beach house leading down to the sand and sea" width="900" height="1125" loading="lazy">
         </figure>
       </div>
     </section>
