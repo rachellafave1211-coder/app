@@ -71,7 +71,7 @@ form.addEventListener('submit', async (e) => {
     }
     form.reset();
     form.classList.add('sent');
-    statusEl.textContent = "Thank you! We'll review your listing and reply within one business day.";
+    statusEl.textContent = "Thanks, we've got it! Look for your free listing review in your inbox within one business day.";
     statusEl.classList.add('success');
   } catch (err) {
     const detail = err.message && err.message !== 'Request failed' && err.message !== 'Failed to fetch' ? ` (${err.message})` : '';
