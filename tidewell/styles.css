@@ -150,8 +150,10 @@ p { margin: 0 0 1em; }
   position: absolute; inset: 0; z-index: -1;
   background: linear-gradient(180deg, rgba(19,63,82,.10) 0%, rgba(19,63,82,.35) 45%, rgba(19,63,82,.82) 100%);
 }
-.hero h1 { color: #fff; max-width: 15ch; }
-.hero h1 em { font-style: italic; font-weight: 500; color: var(--sand-100); }
+.hero h1 { color: #fff; }
+.hero h1 .nowrap { white-space: nowrap; }
+@media (max-width: 374px) { .hero h1 { font-size: 2rem; } }
+.hero h1 em { display: block; font-style: italic; font-weight: 500; color: var(--sand-100); }
 .hero .eyebrow { color: var(--sand-100); }
 .hero .lede { font-size: 1.08rem; max-width: 36rem; color: rgba(255,255,255,.92); margin-bottom: 1.8rem; }
 .hero-actions { display: flex; flex-direction: column; gap: 12px; }
