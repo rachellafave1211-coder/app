@@ -28,7 +28,7 @@ tidewell/
 | **Contact form ID** | `index.html` (search for `YOUR_FORM_ID`) | Step 1 below |
 | **Your domain** | `index.html`, `robots.txt`, `sitemap.xml` (search for `YOUR-DOMAIN.com`) | Step 5 below |
 | **Photos** | `images/` folder | See "Swapping images" |
-| **Testimonials & plan prices** | `index.html` (look for comments that say *Replace* / *Add your price*) | Edit the text in place |
+| **Plan prices** | `index.html` (look for comments that say *Add your price*) | Edit the text in place |
 
 Until the form ID is filled in, the form tells visitors to email you instead, so nothing breaks.
 

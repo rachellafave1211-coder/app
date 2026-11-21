@@ -239,7 +239,13 @@ p { margin: 0 0 1em; }
 .faq details[open] summary::after { transform: rotate(-135deg); margin-top: -2px; }
 .faq details p { padding: 0 22px 20px; margin: 0; color: var(--muted); }
 
-/* ---------- Testimonials ---------- */
+/* ---------- Why Tidewell ---------- */
+.why-item { padding: 28px 0 4px; border-top: 1px solid var(--sand-300); }
+.why-num { display: block; font: italic 500 1.1rem/1 var(--serif); color: var(--ocean-500); letter-spacing: .08em; margin-bottom: 14px; }
+.why-item h3 { margin-bottom: .35em; }
+.why-item p { color: var(--muted); margin: 0; }
+
+/* ---------- Testimonials (kept for when real quotes are added) ---------- */
 .quote {
   margin: 0; padding: 30px 26px; border-radius: var(--radius);
   background: var(--sand-50); border: 1px dashed var(--sand-300);
@@ -309,6 +315,7 @@ p { margin: 0 0 1em; }
   .hero .lede { font-size: 1.2rem; }
 
   .card-grid.services, .card-grid.testimonials { grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .card-grid.why { grid-template-columns: repeat(3, 1fr); gap: 40px; }
   .card { padding: 32px 28px; }
   .how-layout { grid-template-columns: 1.1fr .9fr; gap: 80px; }
   .pricing-grid { grid-template-columns: repeat(3, 1fr); align-items: stretch; }
