@@ -215,6 +215,8 @@ p { margin: 0 0 1em; }
 .price-num { font: 600 3.2rem/1 var(--serif); color: var(--ocean-900); }
 .price-num-sm { font-size: 1.9rem; }
 .price-unit { color: var(--muted); }
+.price-single { max-width: 620px; margin: 0 auto; }
+.price-note { margin: 16px 0 0; font-size: .9rem; color: var(--muted); text-align: center; }
 .checks { list-style: none; margin: 0 0 28px; padding: 0; display: grid; gap: 10px; flex: 1; align-content: start; }
 .checks li { position: relative; padding-left: 28px; }
 .checks li::before {
@@ -295,6 +297,8 @@ p { margin: 0 0 1em; }
   .hero-actions { flex-direction: row; }
   .card-grid.services, .card-grid.testimonials { grid-template-columns: repeat(2, 1fr); }
   .contact-form { padding: 34px 32px; }
+  .price-single { padding: 40px 44px; }
+  .price-single .checks { grid-template-columns: 1fr 1fr; column-gap: 24px; }
 }
 
 @media (min-width: 900px) {
