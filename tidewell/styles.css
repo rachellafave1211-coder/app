@@ -291,6 +291,10 @@ p { margin: 0 0 1em; }
 .footer-inner { border-top: 1px solid rgba(255,255,255,.12); padding-top: 40px; }
 .site-footer .wordmark { margin-bottom: 16px; }
 .site-footer a:not(.wordmark) { color: var(--sand-100); }
+.footer-nav { display: grid; grid-template-columns: repeat(3, max-content); gap: 0 26px; margin: 22px 0 0; }
+@media (min-width: 600px) { .footer-nav { display: flex; flex-wrap: wrap; gap: 4px 22px; } }
+.site-footer .footer-nav a { color: rgba(255,255,255,.82); text-decoration: none; padding: 8px 0; font-weight: 500; }
+.site-footer .footer-nav a:hover { color: var(--sand-100); text-decoration: underline; }
 .site-footer .fine { font-size: .8rem; color: rgba(255,255,255,.5); margin: 24px 0 0; }
 
 /* =========================================================
