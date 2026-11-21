@@ -27,7 +27,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
 // Contact form: send to Formspree without leaving the page
 const form = document.querySelector('.contact-form');
 const statusEl = form.querySelector('.form-status');
-const CONTACT_EMAIL = 'rachellafave1211@gmail.com';
+const CONTACT_EMAIL = 'hello@tidewellhosting.com';
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
